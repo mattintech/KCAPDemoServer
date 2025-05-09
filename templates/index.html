@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}Home - KCAP Demo Server{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="jumbotron">
+            <h1 class="display-4">KCAP Demo Server</h1>
+            <p class="lead">A simple Flask API for demonstrating AR content retrieval for barcode scanning applications.</p>
+            <hr class="my-4">
+            <p>This server simulates the Knox Capture API for AR overlays and includes endpoints for managing product attributes.</p>
+            <div class="mt-4">
+                <h2>API Endpoints</h2>
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <strong>Login:</strong> <code>GET /login</code>
+                        <p>Simulates a simple login with a 200 response (no authentication required).</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Content Fields:</strong> <code>GET /arcontentfields</code>
+                        <p>Returns a list of available attributes (e.g., item ID, price, image URI).</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>AR Info:</strong> <code>GET /arinfo?barcode=123456</code>
+                        <p>Returns product details for a given barcode, including image URLs.</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Static Image Server:</strong> <code>GET /images/123456.png</code>
+                        <p>Serves image files from the <code>static/images/</code> directory.</p>
+                    </li>
+                </ul>
+            </div>
+            <div class="mt-4">
+                <a href="/admin" class="btn btn-primary btn-lg">Go to Admin Interface</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

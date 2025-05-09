@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+
+{% block title %}Edit Product - KCAP Demo Server{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h2>Edit Product</h2>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.edit_product', product_id=product_id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="product_id" class="form-label">Product ID</label>
+                        <input type="text" class="form-control" id="product_id" value="{{ product_id }}" disabled>
+                        <div class="form-text">Product ID cannot be changed.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Product Name *</label>
+                        {% for field in product %}
+                            {% if field.fieldName == '_name' %}
+                                <input type="text" class="form-control" id="name" name="name" required value="{{ field.value }}">
+                            {% endif %}
+                        {% endfor %}
+                        <div class="form-text">Enter a descriptive name for the product.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {% for field in product %}
+                                {% if field.fieldName == '_price' %}
+                                    {% set price_value = field.value|replace('$', '') %}
+                                    <input type="text" class="form-control" id="price" name="price" required 
+                                           pattern="[0-9]+(\.[0-9]{1,2})?" value="{{ price_value }}">
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div class="form-text">Enter the price in decimal format (e.g., 49.99)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Product Image</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
+                        <div class="form-text">Leave empty to keep the current image.</div>
+                        
+                        <div class="mt-3">
+                            <label class="form-label">Current Image:</label>
+                            {% for field in product %}
+                                {% if field.fieldName == '_image' %}
+                                    <div>
+                                        <img src="{{ field.value }}" alt="Current product image" class="image-preview">
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-2">
+                            <label class="form-label">New Image Preview:</label>
+                            <img id="image-preview" class="image-preview" style="display: none;">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Update Product</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewImage(input) {
+    var preview = document.getElementById('image-preview');
+    
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

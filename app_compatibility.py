@@ -1,3 +1,22 @@
+"""
+This file is a compatibility wrapper for the main app.py
+It addresses the Werkzeug import issue by patching the necessary functions
+"""
+import sys
+
+# Add compatibility for url_quote before importing Flask
+try:
+    # First try normal import
+    from werkzeug.urls import url_quote
+except ImportError:
+    # If it fails, create a shim for the missing function
+    import werkzeug
+    from werkzeug.urls import quote as url_quote
+    # Patch the werkzeug.urls module
+    werkzeug.urls.url_quote = url_quote
+    sys.modules['werkzeug.urls'].url_quote = url_quote
+
+# Now import Flask normally
 from flask import Flask, jsonify, request, send_file, render_template, flash
 import os
 import json
@@ -60,6 +79,14 @@ def serve_barcode(filename):
     return jsonify({"error": "Barcode not found"}), 404
 
 if __name__ == '__main__':
+    # Print helpful information
+    print("=" * 80)
+    print("KCAP Demo Server")
+    print("=" * 80)
+    print("This version includes compatibility fixes for Werkzeug/Flask version mismatches.")
+    print("If you encounter dependency errors, please run: pip install -r requirements.txt")
+    print("=" * 80)
+    
     # Ensure the required directories exist
     os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'images'), exist_ok=True)
     os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'barcodes'), exist_ok=True)

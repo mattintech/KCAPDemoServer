@@ -25,12 +25,21 @@
 * **Status Codes:** Return appropriate HTTP status codes (e.g., 200 for success, 404 for not found, 500 for server error).
 * **Error Responses:** Provide consistent and descriptive error messages.
 * **Data Validation:** Validate all incoming data to prevent unexpected behavior and security issues.
+* **Unified API and UI:** For demo purposes, both the API endpoints and admin UI should be served by the same Flask application.
 
 ## File Organization
 
 * **Static Files:** Store images in the `static/images/` directory.
 * **Product Data:** Store product metadata in `products.json`.
 * **Configuration Files:** Use a dedicated `config/` directory for environment-specific settings.
+* **Templates:** Store HTML templates in the `templates/` directory, with admin-specific templates in `templates/admin/`.
+
+## Documentation Guidelines
+
+* **Keep Documentation Updated:** Update TASK.md as features are implemented to track progress.
+* **Readme First:** README.md should always reflect the current state of the project and provide clear setup instructions.
+* **Code Comments:** Keep code comments in sync with implementation changes.
+* **API Documentation:** Document all API endpoints, including request/response formats.
 
 ## Security Guidelines
 

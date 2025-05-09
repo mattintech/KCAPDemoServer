@@ -1,0 +1,5 @@
+Flask==2.0.1
+Werkzeug==2.0.3
+python-barcode==0.14.0
+qrcode==7.4.2
+Pillow==9.5.0

@@ -1,3 +1,7 @@
 venv/
 desktop.ini
 static/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
