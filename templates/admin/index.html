@@ -11,14 +11,14 @@
         </div>
 
         {% if products %}
-        <table class="table table-striped">
-            <thead>
+        <table class="table table-striped table-bordered align-middle">
+            <thead class="table-light">
                 <tr>
-                    <th>Product ID</th>
-                    <th>Name</th>
-                    <th>Price</th>
-                    <th>Image</th>
-                    <th>Actions</th>
+                    <th style="width: 15%">Product ID</th>
+                    <th style="width: 25%">Name</th>
+                    <th style="width: 10%">Price</th>
+                    <th style="width: 20%">Image</th>
+                    <th style="width: 30%">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -42,12 +42,14 @@
                     <td>
                         {% for field in product_data %}
                             {% if field.fieldName == '_image' %}
-                                <img src="{{ field.value }}" alt="Product image" style="max-height: 100px; max-width: 100px;">
+                                <div class="product-image-container">
+                                    <img src="{{ field.value }}" alt="Product image" class="product-image">
+                                </div>
                             {% endif %}
                         {% endfor %}
                     </td>
                     <td>
-                        <div class="btn-group">
+                        <div class="d-flex justify-content-center gap-2">
                             <a href="{{ url_for('admin.edit_product', product_id=product_id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                             <a href="{{ url_for('admin.generate_barcode_page', product_id=product_id) }}" class="btn btn-sm btn-outline-success">Barcodes</a>
                             <button type="button" class="btn btn-sm btn-outline-danger" 
