@@ -4,7 +4,8 @@ import json
 from admin import admin_bp
 
 app = Flask(__name__)
-app.config['STATIC_FOLDER'] = './static'
+# Set DATA_FOLDER to the absolute path of the data directory inside src
+app.config['DATA_FOLDER'] = os.path.join(os.path.dirname(__file__), 'data')
 app.config['SECRET_KEY'] = 'dev-key-for-demo-only'
 
 # Register blueprints
@@ -13,7 +14,8 @@ app.register_blueprint(admin_bp)
 # Load product data from products.json
 def load_products():
     try:
-        with open('static/products.json', 'r') as f:
+        products_file = os.path.join(app.config['DATA_FOLDER'], 'products.json')
+        with open(products_file, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
@@ -47,25 +49,25 @@ def get_ar_info():
 
 @app.route('/images/<path:filename>', methods=['GET'])
 def serve_image(filename):
-    image_path = os.path.join(app.config['STATIC_FOLDER'], 'images', filename)
+    image_path = os.path.join(app.config['DATA_FOLDER'], 'images', filename)
     if os.path.exists(image_path):
         return send_file(image_path)
     return jsonify({"error": "Image not found"}), 404
 
 @app.route('/barcodes/<path:filename>', methods=['GET'])
 def serve_barcode(filename):
-    barcode_path = os.path.join(app.config['STATIC_FOLDER'], 'barcodes', filename)
+    barcode_path = os.path.join(app.config['DATA_FOLDER'], 'barcodes', filename)
     if os.path.exists(barcode_path):
         return send_file(barcode_path)
     return jsonify({"error": "Barcode not found"}), 404
 
 if __name__ == '__main__':
     # Ensure the required directories exist
-    os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'images'), exist_ok=True)
-    os.makedirs(os.path.join(app.config['STATIC_FOLDER'], 'barcodes'), exist_ok=True)
+    os.makedirs(os.path.join(app.config['DATA_FOLDER'], 'images'), exist_ok=True)
+    os.makedirs(os.path.join(app.config['DATA_FOLDER'], 'barcodes'), exist_ok=True)
     
     # If products.json doesn't exist, create it with initial data
-    products_file = os.path.join(app.config['STATIC_FOLDER'], 'products.json')
+    products_file = os.path.join(app.config['DATA_FOLDER'], 'products.json')
     if not os.path.exists(products_file):
         initial_data = {
             "123456": [

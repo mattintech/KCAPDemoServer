@@ -19,9 +19,10 @@ except ImportError:
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-PRODUCTS_FILE = 'static/products.json'
-UPLOAD_FOLDER = 'static/images'
-BARCODE_FOLDER = 'static/barcodes'
+DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
+PRODUCTS_FILE = os.path.join(DATA_FOLDER, 'products.json')
+UPLOAD_FOLDER = os.path.join(DATA_FOLDER, 'images')
+BARCODE_FOLDER = os.path.join(DATA_FOLDER, 'barcodes')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):

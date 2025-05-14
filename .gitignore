@@ -1,6 +1,6 @@
 venv/
 desktop.ini
-static/
+data/
 __pycache__/
 *.pyc
 *.pyo
