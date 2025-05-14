@@ -1,7 +1,8 @@
 from flask import Flask, jsonify, request, send_file, render_template, flash
 import os
 import json
-from admin import admin_bp
+from routes.admin import admin_bp
+from routes.api import api_bp
 
 app = Flask(__name__)
 # Set DATA_FOLDER to the absolute path of the data directory inside src
@@ -10,6 +11,7 @@ app.config['SECRET_KEY'] = 'dev-key-for-demo-only'
 
 # Register blueprints
 app.register_blueprint(admin_bp)
+app.register_blueprint(api_bp)
 
 # Load product data from products.json
 def load_products():

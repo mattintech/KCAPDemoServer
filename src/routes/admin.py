@@ -7,11 +7,10 @@ from werkzeug.utils import secure_filename
 
 # Import barcode generator class, but handle the case if it fails
 try:
-    from barcode_generator import BarcodeGenerator
+    from utils.barcode_generator import BarcodeGenerator
     BARCODE_GENERATOR_AVAILABLE = True
 except ImportError:
     BARCODE_GENERATOR_AVAILABLE = False
-    # Create a stub class for graceful degradation
     class BarcodeGenerator:
         @staticmethod
         def check_dependencies():
@@ -19,10 +18,10 @@ except ImportError:
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
+DATA_FOLDER = os.path.join(os.path.dirname(__file__), '../data')
 PRODUCTS_FILE = os.path.join(DATA_FOLDER, 'products.json')
 UPLOAD_FOLDER = os.path.join(DATA_FOLDER, 'images')
-BARCODE_FOLDER = os.path.join(DATA_FOLDER, 'barcodes')
+BARCODE_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'barcodes'))
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
@@ -283,5 +282,3 @@ def generate_barcode_page(product_id):
                           product_id=product_id, 
                           product=product_data,
                           dependencies=dependency_status)
-
-# Remove or replace this file, as admin.py has been moved to routes/admin.py
