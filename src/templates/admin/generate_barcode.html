@@ -8,7 +8,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h2>Generate Barcodes for Product: {{ product_id }}</h2>
-                <a href="{{ url_for('admin.index') }}" class="btn btn-outline-secondary">Back to Products</a>
+                <a href="{{ url_for('admin.index', tenant_id=tenant_id) }}" class="btn btn-outline-secondary">Back to Products</a>
             </div>
             <div class="card-body">
                 {% if not dependencies.qrcode or not dependencies.barcode or not dependencies.pillow %}
@@ -38,9 +38,9 @@
                                 <h3>QR Code</h3>
                             </div>
                             <div class="card-body text-center">
-                                <img src="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='qrcode') }}" alt="QR Code" class="img-fluid mb-3" style="max-width: 250px;">
+                                <img src="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='qrcode') }}" alt="QR Code" class="img-fluid mb-3" style="max-width: 250px;">
                                 <p class="text-muted">QR Code contains a link to the product AR info.</p>
-                                <a href="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='qrcode') }}" class="btn btn-primary" download="product_{{ product_id }}_qrcode.png">Download QR Code</a>
+                                <a href="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='qrcode') }}" class="btn btn-primary" download="product_{{ product_id }}_qrcode.png">Download QR Code</a>
                             </div>
                         </div>
                     </div>
@@ -51,9 +51,9 @@
                                 <h3>EAN-13 Barcode</h3>
                             </div>
                             <div class="card-body text-center">
-                                <img src="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='ean13') }}" alt="EAN-13 Barcode" class="img-fluid mb-3" style="max-width: 250px;">
+                                <img src="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='ean13') }}" alt="EAN-13 Barcode" class="img-fluid mb-3" style="max-width: 250px;">
                                 <p class="text-muted">Standard EAN-13 barcode format.</p>
-                                <a href="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='ean13') }}" class="btn btn-primary" download="product_{{ product_id }}_ean13.png">Download EAN-13</a>
+                                <a href="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='ean13') }}" class="btn btn-primary" download="product_{{ product_id }}_ean13.png">Download EAN-13</a>
                             </div>
                         </div>
                     </div>
@@ -64,9 +64,9 @@
                                 <h3>Code 128 Barcode</h3>
                             </div>
                             <div class="card-body text-center">
-                                <img src="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='code128') }}" alt="Code 128 Barcode" class="img-fluid mb-3" style="max-width: 250px;">
+                                <img src="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='code128') }}" alt="Code 128 Barcode" class="img-fluid mb-3" style="max-width: 250px;">
                                 <p class="text-muted">High-density alphanumeric barcode.</p>
-                                <a href="{{ url_for('admin.generate_barcode', product_id=product_id, code_type='code128') }}" class="btn btn-primary" download="product_{{ product_id }}_code128.png">Download Code 128</a>
+                                <a href="{{ url_for('admin.generate_barcode', tenant_id=tenant_id, product_id=product_id, code_type='code128') }}" class="btn btn-primary" download="product_{{ product_id }}_code128.png">Download Code 128</a>
                             </div>
                         </div>
                     </div>

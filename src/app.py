@@ -1,34 +1,43 @@
-from flask import Flask, jsonify, request, send_file, render_template, flash, Response
+from flask import Flask, jsonify, request, send_file, render_template, flash, Response, redirect
 import os
 import base64
-from routes.admin import admin_bp
-from routes.api import api_bp
 import database
 import qrcode
 import barcode
 from barcode.writer import ImageWriter
 from io import BytesIO
 import shutil
+from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
 # Set DATA_FOLDER to the absolute path of the data directory inside src
 app.config['DATA_FOLDER'] = os.path.join(os.path.dirname(__file__), 'data')
 app.config['SECRET_KEY'] = 'dev-key-for-demo-only'
 
-# Register blueprints
-app.register_blueprint(admin_bp)
-app.register_blueprint(api_bp)
+# Custom converter for tenant IDs
+class TenantConverter(BaseConverter):
+    regex = '[a-zA-Z0-9_-]+'
+
+app.url_map.converters['tenant'] = TenantConverter
 
 # Load product data from database
-def load_products():
-    return database.get_all_products()
+def load_products(tenant_id=None):
+    return database.get_all_products(tenant_id)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Show a tenant selection page or redirect to default
+    tenants = database.get_all_tenants()
+    return render_template('tenant_selection.html', tenants=tenants)
 
-def check_basic_auth(auth_header):
-    """Validate Basic authentication credentials"""
+@app.route('/<tenant:tenant_id>/')
+def tenant_index(tenant_id):
+    # Auto-create tenant if it doesn't exist
+    tenant = database.get_or_create_tenant(tenant_id)
+    return render_template('index.html', tenant=tenant)
+
+def check_basic_auth(auth_header, tenant_id):
+    """Validate Basic authentication credentials for a tenant"""
     if not auth_header or not auth_header.startswith('Basic '):
         return False
     
@@ -37,27 +46,27 @@ def check_basic_auth(auth_header):
         credentials = base64.b64decode(auth_header[6:]).decode('utf-8')
         username, password = credentials.split(':', 1)
         
-        # Simple hardcoded credentials - in production, use secure storage
-        # You can change these credentials as needed
-        if username == 'admin' and password == 'knox123':
+        # Get tenant credentials from database
+        tenant = database.get_or_create_tenant(tenant_id)
+        if username == tenant['username'] and password == tenant['password']:
             return True
     except Exception:
         pass
     
     return False
 
-@app.route('/login', methods=['GET'])
-def login():
+@app.route('/<tenant:tenant_id>/login', methods=['GET'])
+def login(tenant_id):
     auth_header = request.headers.get('Authorization')
     
-    if check_basic_auth(auth_header):
+    if check_basic_auth(auth_header, tenant_id):
         return jsonify({"status": "success", "message": "Authentication successful"}), 200
     
     return jsonify({"error": "Unauthorized"}), 401
 
-@app.route('/arcontentfields', methods=['GET'])
-def get_ar_content_fields():
-    # Return a fixed set of attributes
+@app.route('/<tenant:tenant_id>/arcontentfields', methods=['GET'])
+def get_ar_content_fields(tenant_id):
+    # Return a fixed set of attributes (tenant_id could be used for custom fields in the future)
     fields = [
         {"fieldName": "_id", "label": "Item ID", "editable": "false", "fieldType": "TEXT"},
         {"fieldName": "_price", "label": "Sale Price", "editable": "true", "fieldType": "TEXT"},
@@ -65,10 +74,10 @@ def get_ar_content_fields():
     ]
     return jsonify(fields), 200
 
-@app.route('/arinfo', methods=['GET'])
-def get_ar_info():
+@app.route('/<tenant:tenant_id>/arinfo', methods=['GET'])
+def get_ar_info(tenant_id):
     barcode = request.args.get('barcode')
-    products = load_products()
+    products = load_products(tenant_id)
     
     # Helper function to convert relative image paths to absolute URLs
     def make_absolute_urls(product_fields):
@@ -77,8 +86,8 @@ def get_ar_info():
             if field['fieldName'] == '_image' and field['value']:
                 # If it's already an absolute URL, leave it as is
                 if not field['value'].startswith('http'):
-                    # Build absolute URL using request host
-                    field['value'] = f"{request.url_root.rstrip('/')}{field['value']}"
+                    # Build absolute URL using request host with tenant
+                    field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
         return product_fields
     
     # If barcode is provided, return specific product
@@ -99,16 +108,16 @@ def get_ar_info():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-@app.route('/images/<path:filename>', methods=['GET'])
-def serve_image(filename):
+@app.route('/<tenant:tenant_id>/images/<path:filename>', methods=['GET'])
+def serve_image(tenant_id, filename):
     # Log the request for debugging
-    app.logger.info(f"Image requested: {filename}")
+    app.logger.info(f"Image requested for tenant {tenant_id}: {filename}")
     
     # Extract product ID from filename (e.g., "123456.jpg" -> "123456")
     product_id = os.path.splitext(filename)[0]
     
-    # Get image from database
-    image_data = database.get_product_image(product_id)
+    # Get image from database for this tenant
+    image_data = database.get_product_image(product_id, tenant_id)
     if image_data:
         image_bytes, mime_type = image_data
         response = Response(image_bytes, mimetype=mime_type)
@@ -129,8 +138,8 @@ def serve_image(filename):
     app.logger.warning(f"Image not found: {filename}")
     return jsonify({"error": "Image not found"}), 404
 
-@app.route('/barcodes/<path:filename>', methods=['GET'])
-def serve_barcode(filename):
+@app.route('/<tenant:tenant_id>/barcodes/<path:filename>', methods=['GET'])
+def serve_barcode(tenant_id, filename):
     # Parse filename to extract product_id and barcode type
     # Expected format: {product_id}_{type}.png
     name_parts = os.path.splitext(filename)[0].split('_')
@@ -145,9 +154,9 @@ def serve_barcode(filename):
         buffer = BytesIO()
         
         if code_type == 'qr':
-            # Generate QR code
+            # Generate QR code with tenant in URL
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
-            qr.add_data(f'http://{request.host}/arinfo?barcode={product_id}')
+            qr.add_data(f'http://{request.host}/{tenant_id}/arinfo?barcode={product_id}')
             qr.make(fit=True)
             img = qr.make_image(fill_color="black", back_color="white")
             img.save(buffer, format='PNG')
@@ -180,6 +189,31 @@ def serve_barcode(filename):
     except Exception as e:
         app.logger.error(f"Barcode generation error: {str(e)}")
         return jsonify({"error": "Failed to generate barcode"}), 500
+
+# Import the admin routes directly and register them with tenant support
+from routes.admin import (index as admin_index, add_product, edit_product, 
+                         delete_product, view_product, generate_barcode, 
+                         generate_barcode_page, manage_credentials)
+
+# Register admin routes with tenant prefix
+app.add_url_rule('/<tenant:tenant_id>/admin/', 'admin.index', admin_index)
+app.add_url_rule('/<tenant:tenant_id>/admin/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/admin/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/admin/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
+app.add_url_rule('/<tenant:tenant_id>/admin/view/<product_id>', 'admin.view_product', view_product)
+app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
+app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
+app.add_url_rule('/<tenant:tenant_id>/admin/credentials', 'admin.manage_credentials', manage_credentials, methods=['GET', 'POST'])
+
+# Register API routes with tenant prefix
+from routes.api import api_index
+app.add_url_rule('/<tenant:tenant_id>/api/', 'api.api_index', api_index)
+
+# Catch-all route for admin without tenant - redirect to home
+@app.route('/admin/')
+@app.route('/admin/<path:path>')
+def redirect_admin_to_home(path=None):
+    return redirect('/')
 
 if __name__ == '__main__':
     # Initialize database

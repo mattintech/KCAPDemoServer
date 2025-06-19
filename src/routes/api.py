@@ -1,8 +1,5 @@
-# API routes blueprint scaffold
-from flask import Blueprint, jsonify
+# API routes scaffold
+from flask import jsonify
 
-api_bp = Blueprint('api', __name__, url_prefix='/api')
-
-@api_bp.route('/')
-def api_index():
-    return jsonify({'message': 'API Home'})
+def api_index(tenant_id):
+    return jsonify({'message': 'API Home', 'tenant': tenant_id})

@@ -6,7 +6,7 @@
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="jumbotron">
-            <h1 class="display-4">KCAP Demo Server</h1>
+            <h1 class="display-4">KCAP Demo Server{% if tenant %} - {{ tenant.name }}{% endif %}</h1>
             <p class="lead">A simple Flask API for demonstrating AR content retrieval for barcode scanning applications.</p>
             <hr class="my-4">
             <p>This server simulates the Knox Capture API for AR overlays and includes endpoints for managing product attributes.</p>
@@ -14,25 +14,29 @@
                 <h2>API Endpoints</h2>
                 <ul class="list-group">
                     <li class="list-group-item">
-                        <strong>Login:</strong> <code>GET /login</code>
-                        <p>Simulates a simple login with a 200 response (no authentication required).</p>
+                        <strong>Login:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/login</code>
+                        <p>Authenticates using Basic Auth with tenant-specific credentials.</p>
                     </li>
                     <li class="list-group-item">
-                        <strong>Content Fields:</strong> <code>GET /arcontentfields</code>
+                        <strong>Content Fields:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/arcontentfields</code>
                         <p>Returns a list of available attributes (e.g., item ID, price, image URI).</p>
                     </li>
                     <li class="list-group-item">
-                        <strong>AR Info:</strong> <code>GET /arinfo?barcode=123456</code>
+                        <strong>AR Info:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/arinfo?barcode=123456</code>
                         <p>Returns product details for a given barcode, including image URLs.</p>
                     </li>
                     <li class="list-group-item">
-                        <strong>Static Image Server:</strong> <code>GET /images/123456.png</code>
-                        <p>Serves image files from the <code>static/images/</code> directory.</p>
+                        <strong>Static Image Server:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/images/123456.png</code>
+                        <p>Serves product images stored in the database.</p>
                     </li>
                 </ul>
             </div>
             <div class="mt-4">
+                {% if tenant %}
+                <a href="/{{ tenant.id }}/admin/" class="btn btn-primary btn-lg">Go to Admin Interface</a>
+                {% else %}
                 <a href="/admin" class="btn btn-primary btn-lg">Go to Admin Interface</a>
+                {% endif %}
             </div>
         </div>
     </div>

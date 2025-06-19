@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import render_template, request, redirect, url_for, flash, jsonify, send_file
 import os
 import json
 import uuid
@@ -19,8 +19,6 @@ except ImportError:
         def check_dependencies():
             return {'qrcode': False, 'barcode': False, 'pillow': False}
 
-admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-
 DATA_FOLDER = os.path.join(os.path.dirname(__file__), '../data')
 PRODUCTS_FILE = os.path.join(DATA_FOLDER, 'products.json')
 UPLOAD_FOLDER = os.path.join(DATA_FOLDER, 'images')
@@ -30,20 +28,19 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def load_products():
-    return database.get_all_products()
+def load_products(tenant_id):
+    return database.get_all_products(tenant_id)
 
 def save_products(products):
     # This is now handled by database operations
     pass
 
-@admin_bp.route('/')
-def index():
-    products = load_products()
-    return render_template('admin/index.html', products=products)
+def index(tenant_id):
+    products = load_products(tenant_id)
+    tenant = database.get_or_create_tenant(tenant_id)
+    return render_template('admin/index.html', products=products, tenant=tenant)
 
-@admin_bp.route('/add', methods=['GET', 'POST'])
-def add_product():
+def add_product(tenant_id):
     if request.method == 'POST':
         # Get form data
         product_id = request.form.get('product_id')
@@ -53,13 +50,13 @@ def add_product():
         # Basic validation
         if not product_id or not name or not price:
             flash('Product ID, Name, and Price are required fields.')
-            return render_template('admin/add_product.html')
+            return render_template('admin/add_product.html', tenant_id=tenant_id)
         
         # Check if product ID already exists
-        products = load_products()
+        products = load_products(tenant_id)
         if product_id in products:
             flash('Product ID already exists.')
-            return render_template('admin/add_product.html')
+            return render_template('admin/add_product.html', tenant_id=tenant_id)
         
         # Handle image upload
         image_data = None
@@ -93,20 +90,19 @@ def add_product():
         ]
         
         # Save to database
-        database.save_product(product_id, product_data, image_data, image_mime_type)
+        database.save_product(product_id, tenant_id, product_data, image_data, image_mime_type)
         
         flash('Product added successfully!')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
-    return render_template('admin/add_product.html')
+    return render_template('admin/add_product.html', tenant_id=tenant_id)
 
-@admin_bp.route('/edit/<product_id>', methods=['GET', 'POST'])
-def edit_product(product_id):
-    products = load_products()
+def edit_product(tenant_id, product_id):
+    products = load_products(tenant_id)
     
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
     if request.method == 'POST':
         # Get form data
@@ -116,7 +112,7 @@ def edit_product(product_id):
         # Basic validation
         if not name or not price:
             flash('Name and Price are required fields.')
-            return render_template('admin/edit_product.html', product_id=product_id, product=products[product_id])
+            return render_template('admin/edit_product.html', product_id=product_id, product=products[product_id], tenant_id=tenant_id)
         
         # Update name and price
         for field in products[product_id]:
@@ -152,41 +148,38 @@ def edit_product(product_id):
                         field["value"] = image_path
         
         # Save to database
-        database.save_product(product_id, products[product_id], image_data, image_mime_type)
+        database.save_product(product_id, tenant_id, products[product_id], image_data, image_mime_type)
         
         flash('Product updated successfully!')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
-    return render_template('admin/edit_product.html', product_id=product_id, product=products[product_id])
+    return render_template('admin/edit_product.html', product_id=product_id, product=products[product_id], tenant_id=tenant_id)
 
-@admin_bp.route('/delete/<product_id>', methods=['POST'])
-def delete_product(product_id):
-    products = load_products()
+def delete_product(tenant_id, product_id):
+    products = load_products(tenant_id)
     
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
     # Delete product from database (image is stored in DB)
-    database.delete_product(product_id)
+    database.delete_product(product_id, tenant_id)
     
     flash('Product deleted successfully!')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tenant_id=tenant_id))
 
-@admin_bp.route('/view/<product_id>')
-def view_product(product_id):
-    products = load_products()
+def view_product(tenant_id, product_id):
+    products = load_products(tenant_id)
     
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
-    return render_template('admin/view_product.html', product_id=product_id, product=products[product_id])
+    return render_template('admin/view_product.html', product_id=product_id, product=products[product_id], tenant_id=tenant_id)
 
-@admin_bp.route('/generate_barcode/<product_id>/<code_type>')
-def generate_barcode(product_id, code_type):
+def generate_barcode(tenant_id, product_id, code_type):
     """Redirect to the main barcode generation endpoint"""
-    products = load_products()
+    products = load_products(tenant_id)
     if product_id not in products:
         return jsonify({"error": "Product not found"}), 404
     
@@ -200,16 +193,15 @@ def generate_barcode(product_id, code_type):
     barcode_type = type_mapping.get(code_type, code_type)
     
     # Redirect to the main barcode endpoint which generates dynamically
-    return redirect(f'/barcodes/{product_id}_{barcode_type}.png')
+    return redirect(f'/{tenant_id}/barcodes/{product_id}_{barcode_type}.png')
 
-@admin_bp.route('/generate_barcode_page/<product_id>')
-def generate_barcode_page(product_id):
+def generate_barcode_page(tenant_id, product_id):
     """Show a page with different barcode options for a product"""
-    products = load_products()
+    products = load_products(tenant_id)
     
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin.index', tenant_id=tenant_id))
     
     # Extract product data
     product_data = {}
@@ -234,4 +226,22 @@ def generate_barcode_page(product_id):
     return render_template('admin/generate_barcode.html', 
                           product_id=product_id, 
                           product=product_data,
-                          dependencies=dependency_status)
+                          dependencies=dependency_status,
+                          tenant_id=tenant_id)
+
+def manage_credentials(tenant_id):
+    """Manage tenant login credentials"""
+    tenant = database.get_or_create_tenant(tenant_id)
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username and password:
+            database.update_tenant_credentials(tenant_id, username, password)
+            flash('Credentials updated successfully!')
+            return redirect(url_for('admin.index', tenant_id=tenant_id))
+        else:
+            flash('Username and password are required.')
+    
+    return render_template('admin/credentials.html', tenant=tenant, tenant_id=tenant_id)
