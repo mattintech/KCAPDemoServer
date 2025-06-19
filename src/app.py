@@ -76,12 +76,8 @@ def login(tenant_id):
 
 @app.route('/<tenant:tenant_id>/arcontentfields', methods=['GET'])
 def get_ar_content_fields(tenant_id):
-    # Return a fixed set of attributes (tenant_id could be used for custom fields in the future)
-    fields = [
-        {"fieldName": "_id", "label": "Item ID", "editable": "false", "fieldType": "TEXT"},
-        {"fieldName": "_price", "label": "Sale Price", "editable": "true", "fieldType": "TEXT"},
-        {"fieldName": "_image", "label": "Image", "editable": "false", "fieldType": "IMAGE_URI"}
-    ]
+    # Get custom fields defined for this tenant
+    fields = database.get_custom_ar_fields(tenant_id)
     return jsonify(fields), 200
 
 @app.route('/<tenant:tenant_id>/arinfo', methods=['GET'])
@@ -89,31 +85,39 @@ def get_ar_info(tenant_id):
     barcode = request.args.get('barcode')
     products = load_products(tenant_id)
     
-    # Helper function to convert relative image paths to absolute URLs
-    def make_absolute_urls(product_fields):
-        # Create absolute URL for image fields
+    # Get custom AR fields for this tenant
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+    custom_field_names = [f['fieldName'] for f in custom_fields]
+    
+    # Helper function to convert relative image paths to absolute URLs and filter fields
+    def filter_and_process_fields(product_fields):
+        # Filter to only include fields defined in custom AR fields
+        filtered_fields = []
         for field in product_fields:
-            if field['fieldName'] == '_image' and field['value']:
-                # If it's already an absolute URL, leave it as is
-                if not field['value'].startswith('http'):
-                    # Build absolute URL using request host with tenant
-                    field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
-        return product_fields
+            if field['fieldName'] in custom_field_names:
+                # Create absolute URL for image fields
+                if field['fieldName'] == '_image' and field['value']:
+                    # If it's already an absolute URL, leave it as is
+                    if not field['value'].startswith('http'):
+                        # Build absolute URL using request host with tenant
+                        field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
+                filtered_fields.append(field)
+        return filtered_fields
     
     # If barcode is provided, return specific product
     if barcode:
         if barcode in products:
-            product_data = make_absolute_urls(products[barcode])
+            product_data = filter_and_process_fields(products[barcode])
             response = jsonify(product_data)
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response, 200
         return jsonify({"error": "Product not found"}), 404
     
     # Return all products if no barcode specified
-    # Convert all products to have absolute URLs
+    # Convert all products to have absolute URLs and filter fields
     all_products = {}
     for product_id, fields in products.items():
-        all_products[product_id] = make_absolute_urls(fields)
+        all_products[product_id] = filter_and_process_fields(fields)
     response = jsonify(all_products)
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
@@ -123,7 +127,26 @@ def serve_image(tenant_id, filename):
     # Log the request for debugging
     app.logger.info(f"Image requested for tenant {tenant_id}: {filename}")
     
-    # Extract product ID from filename (e.g., "123456.jpg" -> "123456")
+    # Check if filename contains field name (e.g., "123456_thumbnail.jpg")
+    base_name = os.path.splitext(filename)[0]
+    
+    if '_' in base_name:
+        # Split to get product_id and field_name
+        parts = base_name.split('_', 1)
+        product_id = parts[0]
+        field_name = '_' + parts[1] if len(parts) > 1 else '_image'
+        
+        # Try to get field-specific image
+        image_data = database.get_product_image_by_field(product_id, tenant_id, field_name)
+        if image_data:
+            image_bytes, mime_type = image_data
+            response = Response(image_bytes, mimetype=mime_type)
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+            app.logger.info(f"Serving field-specific image: {product_id}/{field_name} ({len(image_bytes)} bytes)")
+            return response
+    
+    # Try standard image lookup (backward compatibility)
     product_id = os.path.splitext(filename)[0]
     
     # Get image from database for this tenant
@@ -203,7 +226,7 @@ def serve_barcode(tenant_id, filename):
 # Import the admin routes directly and register them with tenant support
 from routes.admin import (index as admin_index, add_product, edit_product, 
                          delete_product, view_product, generate_barcode, 
-                         generate_barcode_page, manage_credentials)
+                         generate_barcode_page, manage_credentials, manage_ar_fields)
 
 # Register admin routes with tenant prefix
 app.add_url_rule('/<tenant:tenant_id>/admin/', 'admin.index', admin_index)
@@ -214,6 +237,7 @@ app.add_url_rule('/<tenant:tenant_id>/admin/view/<product_id>', 'admin.view_prod
 app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
 app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
 app.add_url_rule('/<tenant:tenant_id>/admin/credentials', 'admin.manage_credentials', manage_credentials, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/admin/ar_fields', 'admin.manage_ar_fields', manage_ar_fields, methods=['GET', 'POST'])
 
 # Register API routes with tenant prefix
 from routes.api import api_index

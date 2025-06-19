@@ -22,29 +22,49 @@
                         <div class="form-text">Must be unique. This will be used as the barcode for AR content.</div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Product Name *</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
-                        <div class="form-text">Enter a descriptive name for the product.</div>
-                    </div>
+                    {% for field in custom_fields %}
+                        {% if field.fieldName != '_id' %}
+                        <div class="mb-3">
+                            <label for="field_{{ field.fieldName }}" class="form-label">{{ field.label }}</label>
+                            {% if field.fieldType == 'IMAGE_URI' %}
+                                <input type="file" class="form-control" id="image_{{ field.fieldName }}" name="image_{{ field.fieldName }}" accept="image/*" onchange="previewImage(this, 'preview_{{ field.fieldName }}')">
+                                <div class="form-text">Supported formats: .png, .jpg, .jpeg, .gif</div>
+                                <div class="mt-2">
+                                    <img id="preview_{{ field.fieldName }}" class="image-preview" style="display: none; max-width: 200px;">
+                                </div>
+                            {% elif field.fieldType == 'TEXT' %}
+                                {% if field.fieldName == '_price' %}
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control" id="field_{{ field.fieldName }}" name="field_{{ field.fieldName }}" pattern="[0-9]+(\.[0-9]{1,2})?" placeholder="49.99">
+                                </div>
+                                {% else %}
+                                <input type="text" class="form-control" id="field_{{ field.fieldName }}" name="field_{{ field.fieldName }}">
+                                {% endif %}
+                            {% else %}
+                                <input type="text" class="form-control" id="field_{{ field.fieldName }}" name="field_{{ field.fieldName }}">
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                     
+                    <!-- Fallback fields for backward compatibility -->
+                    {% if not custom_fields|selectattr('fieldName', 'equalto', '_name')|list %}
                     <div class="mb-3">
-                        <label for="price" class="form-label">Price *</label>
+                        <label for="name" class="form-label">Product Name</label>
+                        <input type="text" class="form-control" id="name" name="name">
+                    </div>
+                    {% endif %}
+                    
+                    {% if not custom_fields|selectattr('fieldName', 'equalto', '_price')|list %}
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="text" class="form-control" id="price" name="price" required pattern="[0-9]+(\.[0-9]{1,2})?" placeholder="49.99">
-                        </div>
-                        <div class="form-text">Enter the price in decimal format (e.g., 49.99)</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="image" class="form-label">Product Image</label>
-                        <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
-                        <div class="form-text">Supported formats: .png, .jpg, .jpeg, .gif</div>
-                        <div class="mt-2">
-                            <img id="image-preview" class="image-preview" style="display: none;">
+                            <input type="text" class="form-control" id="price" name="price" pattern="[0-9]+(\.[0-9]{1,2})?" placeholder="49.99">
                         </div>
                     </div>
+                    {% endif %}
                     
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('admin.index', tenant_id=tenant_id) }}" class="btn btn-secondary">Cancel</a>
@@ -59,8 +79,8 @@
 
 {% block extra_js %}
 <script>
-function previewImage(input) {
-    var preview = document.getElementById('image-preview');
+function previewImage(input, previewId) {
+    var preview = document.getElementById(previewId || 'image-preview');
     
     if (input.files && input.files[0]) {
         var reader = new FileReader();

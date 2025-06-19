@@ -7,36 +7,45 @@
     <div class="col-md-12">
         <div class="jumbotron">
             <h1 class="display-4">KCAP Demo Server{% if tenant %} - {{ tenant.name }}{% endif %}</h1>
-            <p class="lead">A simple Flask API for demonstrating AR content retrieval for barcode scanning applications.</p>
+            <p class="lead">Manage your product catalog and AR content for barcode scanning applications.</p>
             <hr class="my-4">
-            <p>This server simulates the Knox Capture API for AR overlays and includes endpoints for managing product attributes.</p>
+            
             <div class="mt-4">
-                <h2>API Endpoints</h2>
-                <ul class="list-group">
-                    <li class="list-group-item">
-                        <strong>Login:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/login</code>
-                        <p>Authenticates using Basic Auth with tenant-specific credentials.</p>
-                    </li>
-                    <li class="list-group-item">
-                        <strong>Content Fields:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/arcontentfields</code>
-                        <p>Returns a list of available attributes (e.g., item ID, price, image URI).</p>
-                    </li>
-                    <li class="list-group-item">
-                        <strong>AR Info:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/arinfo?barcode=123456</code>
-                        <p>Returns product details for a given barcode, including image URLs.</p>
-                    </li>
-                    <li class="list-group-item">
-                        <strong>Static Image Server:</strong> <code>GET {% if tenant %}/{{ tenant.id }}{% endif %}/images/123456.png</code>
-                        <p>Serves product images stored in the database.</p>
-                    </li>
-                </ul>
+                <h2>Quick Actions</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Product Management</h5>
+                                <p class="card-text">Add, edit, and manage your product catalog with custom fields.</p>
+                                {% if tenant %}
+                                <a href="/{{ tenant.id }}/admin/" class="btn btn-primary">Manage Products</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">AR Field Configuration</h5>
+                                <p class="card-text">Customize the fields returned by AR content endpoints.</p>
+                                {% if tenant %}
+                                <a href="/{{ tenant.id }}/admin/ar_fields" class="btn btn-primary">Configure AR Fields</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
             <div class="mt-4">
-                {% if tenant %}
-                <a href="/{{ tenant.id }}/admin/" class="btn btn-primary btn-lg">Go to Admin Interface</a>
-                {% else %}
-                <a href="/admin" class="btn btn-primary btn-lg">Go to Admin Interface</a>
-                {% endif %}
+                <h2>Getting Started</h2>
+                <ol>
+                    <li>Configure your AR fields to define what information is returned for products</li>
+                    <li>Add products to your catalog with the configured fields</li>
+                    <li>Generate barcodes for your products</li>
+                    <li>Use the AR endpoints in your scanning application</li>
+                </ol>
             </div>
         </div>
     </div>

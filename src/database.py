@@ -75,6 +75,38 @@ def init_database():
             )
         ''')
         
+        # Create custom_ar_fields table for tenant-specific AR field definitions
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS custom_ar_fields (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id TEXT NOT NULL,
+                field_name TEXT NOT NULL,
+                label TEXT NOT NULL,
+                field_type TEXT NOT NULL,
+                editable TEXT DEFAULT 'true',
+                display_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+                UNIQUE(tenant_id, field_name)
+            )
+        ''')
+        
+        # Create product_images table for storing multiple images per product
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS product_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id TEXT NOT NULL,
+                tenant_id TEXT NOT NULL,
+                field_name TEXT NOT NULL,
+                image_data BLOB,
+                image_mime_type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (product_id, tenant_id) REFERENCES products(id, tenant_id) ON DELETE CASCADE,
+                UNIQUE(product_id, tenant_id, field_name)
+            )
+        ''')
+        
         conn.commit()
 
 def migrate_from_json():
@@ -340,6 +372,9 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
             ''', (tenant_id, tenant_id.title(), default_username, default_password))
             conn.commit()
             
+            # Initialize default AR fields for the new tenant
+            init_default_ar_fields(tenant_id)
+            
             return {
                 'id': tenant_id,
                 'name': tenant_id.title(),
@@ -401,3 +436,122 @@ def cleanup_reserved_tenants():
         
         conn.commit()
         return deleted_count
+
+def get_custom_ar_fields(tenant_id: str) -> List[Dict[str, Any]]:
+    """Get custom AR fields for a tenant"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, field_name, label, field_type, editable, display_order
+            FROM custom_ar_fields
+            WHERE tenant_id = ?
+            ORDER BY display_order, field_name
+        ''', (tenant_id,))
+        
+        fields = []
+        for row in cursor.fetchall():
+            fields.append({
+                'id': row['id'],
+                'fieldName': row['field_name'],
+                'label': row['label'],
+                'fieldType': row['field_type'],
+                'editable': row['editable'],
+                'displayOrder': row['display_order']
+            })
+        
+        return fields
+
+def save_custom_ar_field(tenant_id: str, field_data: Dict[str, Any]) -> int:
+    """Save or update a custom AR field"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        if 'id' in field_data:
+            # Update existing field
+            cursor.execute('''
+                UPDATE custom_ar_fields
+                SET field_name = ?, label = ?, field_type = ?, editable = ?, 
+                    display_order = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND tenant_id = ?
+            ''', (
+                field_data['fieldName'],
+                field_data['label'],
+                field_data['fieldType'],
+                field_data.get('editable', 'true'),
+                field_data.get('displayOrder', 0),
+                field_data['id'],
+                tenant_id
+            ))
+            conn.commit()
+            return field_data['id']
+        else:
+            # Insert new field
+            cursor.execute('''
+                INSERT INTO custom_ar_fields 
+                (tenant_id, field_name, label, field_type, editable, display_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                tenant_id,
+                field_data['fieldName'],
+                field_data['label'],
+                field_data['fieldType'],
+                field_data.get('editable', 'true'),
+                field_data.get('displayOrder', 0)
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+def delete_custom_ar_field(tenant_id: str, field_id: int):
+    """Delete a custom AR field"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            DELETE FROM custom_ar_fields
+            WHERE id = ? AND tenant_id = ?
+        ''', (field_id, tenant_id))
+        conn.commit()
+
+def init_default_ar_fields(tenant_id: str):
+    """Initialize default AR fields for a new tenant"""
+    default_fields = [
+        {"fieldName": "_id", "label": "Item ID", "fieldType": "TEXT", "editable": "false", "displayOrder": 1},
+        {"fieldName": "_price", "label": "Sale Price", "fieldType": "TEXT", "editable": "true", "displayOrder": 2},
+        {"fieldName": "_image", "label": "Image", "fieldType": "IMAGE_URI", "editable": "false", "displayOrder": 3}
+    ]
+    
+    for field in default_fields:
+        save_custom_ar_field(tenant_id, field)
+
+def save_product_image(product_id: str, tenant_id: str, field_name: str, image_data: bytes, mime_type: str):
+    """Save an image for a specific field of a product"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Delete existing image for this field if any
+        cursor.execute('''
+            DELETE FROM product_images 
+            WHERE product_id = ? AND tenant_id = ? AND field_name = ?
+        ''', (product_id, tenant_id, field_name))
+        
+        # Insert new image
+        cursor.execute('''
+            INSERT INTO product_images (product_id, tenant_id, field_name, image_data, image_mime_type)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (product_id, tenant_id, field_name, image_data, mime_type))
+        
+        conn.commit()
+
+def get_product_image_by_field(product_id: str, tenant_id: str, field_name: str) -> Optional[tuple[bytes, str]]:
+    """Get image data for a specific field of a product"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT image_data, image_mime_type 
+            FROM product_images 
+            WHERE product_id = ? AND tenant_id = ? AND field_name = ?
+        ''', (product_id, tenant_id, field_name))
+        
+        row = cursor.fetchone()
+        if row and row['image_data']:
+            return row['image_data'], row['image_mime_type']
+        return None
