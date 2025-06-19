@@ -204,6 +204,10 @@ def migrate_from_json():
 
 def get_all_products(tenant_id: str = None) -> Dict[str, List[Dict[str, Any]]]:
     """Get all products for a tenant in the legacy format"""
+    # Normalize tenant_id to lowercase if provided
+    if tenant_id:
+        tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -248,6 +252,9 @@ def get_all_products(tenant_id: str = None) -> Dict[str, List[Dict[str, Any]]]:
 
 def get_product(product_id: str, tenant_id: str) -> Optional[List[Dict[str, Any]]]:
     """Get a single product by ID and tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -272,6 +279,9 @@ def get_product(product_id: str, tenant_id: str) -> Optional[List[Dict[str, Any]
 
 def save_product(product_id: str, tenant_id: str, fields: List[Dict[str, Any]], image_data: Optional[bytes] = None, image_mime_type: Optional[str] = None):
     """Save or update a product for a tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -336,6 +346,9 @@ def save_product(product_id: str, tenant_id: str, fields: List[Dict[str, Any]], 
 
 def delete_product(product_id: str, tenant_id: str):
     """Delete a product for a tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('DELETE FROM products WHERE id = ? AND tenant_id = ?', (product_id, tenant_id))
@@ -343,6 +356,9 @@ def delete_product(product_id: str, tenant_id: str):
 
 def get_product_image(product_id: str, tenant_id: str) -> Optional[tuple[bytes, str]]:
     """Get product image data and mime type for a tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT image_data, image_mime_type FROM products WHERE id = ? AND tenant_id = ?', (product_id, tenant_id))
@@ -420,6 +436,9 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
 
 def update_tenant_credentials(tenant_id: str, username: str, password: str):
     """Update tenant credentials"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -448,6 +467,9 @@ def get_all_tenants() -> List[Dict[str, Any]]:
 
 def delete_tenant(tenant_id: str):
     """Delete a tenant and all associated data"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         # Due to ON DELETE CASCADE, this will also delete all products and product_fields
@@ -475,6 +497,9 @@ def cleanup_reserved_tenants():
 
 def get_custom_ar_fields(tenant_id: str) -> List[Dict[str, Any]]:
     """Get custom AR fields for a tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -499,6 +524,9 @@ def get_custom_ar_fields(tenant_id: str) -> List[Dict[str, Any]]:
 
 def save_custom_ar_field(tenant_id: str, field_data: Dict[str, Any]) -> int:
     """Save or update a custom AR field"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -539,6 +567,9 @@ def save_custom_ar_field(tenant_id: str, field_data: Dict[str, Any]) -> int:
 
 def delete_custom_ar_field(tenant_id: str, field_id: int):
     """Delete a custom AR field"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -549,17 +580,38 @@ def delete_custom_ar_field(tenant_id: str, field_id: int):
 
 def init_default_ar_fields(tenant_id: str):
     """Initialize default AR fields for a new tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     default_fields = [
         {"fieldName": "_id", "label": "Item ID", "fieldType": "TEXT", "editable": "false", "displayOrder": 1},
         {"fieldName": "_price", "label": "Sale Price", "fieldType": "TEXT", "editable": "true", "displayOrder": 2},
         {"fieldName": "_image", "label": "Image", "fieldType": "IMAGE_URI", "editable": "false", "displayOrder": 3}
     ]
     
-    for field in default_fields:
-        save_custom_ar_field(tenant_id, field)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for field in default_fields:
+            # Use INSERT OR IGNORE to avoid duplicate key errors
+            cursor.execute('''
+                INSERT OR IGNORE INTO custom_ar_fields 
+                (tenant_id, field_name, label, field_type, editable, display_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                tenant_id,
+                field['fieldName'],
+                field['label'],
+                field['fieldType'],
+                field.get('editable', 'true'),
+                field.get('displayOrder', 0)
+            ))
+        conn.commit()
 
 def save_product_image(product_id: str, tenant_id: str, field_name: str, image_data: bytes, mime_type: str):
     """Save an image for a specific field of a product"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -579,6 +631,9 @@ def save_product_image(product_id: str, tenant_id: str, field_name: str, image_d
 
 def get_product_image_by_field(product_id: str, tenant_id: str, field_name: str) -> Optional[tuple[bytes, str]]:
     """Get image data for a specific field of a product"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''

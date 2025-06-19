@@ -8,6 +8,7 @@ from barcode.writer import ImageWriter
 from io import BytesIO
 import shutil
 from werkzeug.routing import BaseConverter
+from functools import wraps
 
 app = Flask(__name__)
 # Set DATA_FOLDER to the absolute path of the data directory inside src
@@ -17,6 +18,14 @@ app.config['SECRET_KEY'] = 'dev-key-for-demo-only'
 # Custom converter for tenant IDs
 class TenantConverter(BaseConverter):
     regex = '[a-zA-Z0-9_-]+'
+    
+    def to_python(self, value):
+        # Convert to lowercase when parsing from URL
+        return value.lower()
+    
+    def to_url(self, value):
+        # Convert to lowercase when generating URLs
+        return value.lower()
 
 app.url_map.converters['tenant'] = TenantConverter
 

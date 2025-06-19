@@ -90,11 +90,14 @@
             e.preventDefault();
             const tenantId = document.getElementById('tenantId').value;
             if (tenantId) {
-                if (reservedIds.includes(tenantId.toLowerCase())) {
+                // Convert to lowercase for consistency
+                const normalizedId = tenantId.toLowerCase();
+                if (reservedIds.includes(normalizedId)) {
                     alert(`"${tenantId}" is a reserved name and cannot be used as a tenant ID.`);
                     return;
                 }
-                window.location.href = '/' + tenantId + '/';
+                // Use the normalized (lowercase) ID in the URL
+                window.location.href = '/' + normalizedId + '/';
             }
         });
         
