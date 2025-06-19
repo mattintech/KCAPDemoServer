@@ -4,6 +4,9 @@ import json
 import uuid
 import io
 from werkzeug.utils import secure_filename
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import database
 
 # Import barcode generator class, but handle the case if it fails
 try:
@@ -28,15 +31,11 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_products():
-    try:
-        with open(PRODUCTS_FILE, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    return database.get_all_products()
 
 def save_products(products):
-    with open(PRODUCTS_FILE, 'w') as f:
-        json.dump(products, f, indent=2)
+    # This is now handled by database operations
+    pass
 
 @admin_bp.route('/')
 def index():
@@ -63,16 +62,27 @@ def add_product():
             return render_template('admin/add_product.html')
         
         # Handle image upload
-        image_filename = f"{product_id}.png"  # Default name
-        image_path = f"/images/{image_filename}"
+        image_data = None
+        image_mime_type = None
+        image_path = f"/images/{product_id}.png"  # Default path for display
         
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_file(file.filename):
                 extension = file.filename.rsplit('.', 1)[1].lower()
-                image_filename = f"{product_id}.{extension}"
-                image_path = f"/images/{image_filename}"
-                file.save(os.path.join(UPLOAD_FOLDER, image_filename))
+                image_path = f"/images/{product_id}.{extension}"
+                
+                # Read image data
+                image_data = file.read()
+                
+                # Determine mime type
+                mime_types = {
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'png': 'image/png',
+                    'gif': 'image/gif'
+                }
+                image_mime_type = mime_types.get(extension, 'image/jpeg')
         
         # Create product data structure
         product_data = [
@@ -82,9 +92,8 @@ def add_product():
             {"fieldName": "_image", "label": "Image", "value": image_path, "editable": "false", "fieldType": "IMAGE_URI"}
         ]
         
-        # Save to products.json
-        products[product_id] = product_data
-        save_products(products)
+        # Save to database
+        database.save_product(product_id, product_data, image_data, image_mime_type)
         
         flash('Product added successfully!')
         return redirect(url_for('admin.index'))
@@ -117,36 +126,33 @@ def edit_product(product_id):
                 field["value"] = f"${price}"
         
         # Handle image upload
+        image_data = None
+        image_mime_type = None
+        
         if 'image' in request.files and request.files['image'].filename:
             file = request.files['image']
             if allowed_file(file.filename):
-                # Find current image path
-                current_image = None
-                for field in products[product_id]:
-                    if field["fieldName"] == "_image":
-                        current_image = field["value"]
+                # Read new image data
+                image_data = file.read()
                 
-                if current_image:
-                    # Get current filename
-                    current_filename = os.path.basename(current_image)
-                    # Delete old file if it exists and is different
-                    old_path = os.path.join(UPLOAD_FOLDER, current_filename)
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                
-                # Save new image
+                # Determine mime type
                 extension = file.filename.rsplit('.', 1)[1].lower()
-                image_filename = f"{product_id}.{extension}"
-                image_path = f"/images/{image_filename}"
-                file.save(os.path.join(UPLOAD_FOLDER, image_filename))
+                mime_types = {
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'png': 'image/png',
+                    'gif': 'image/gif'
+                }
+                image_mime_type = mime_types.get(extension, 'image/jpeg')
                 
-                # Update image path
+                # Update image path in product data
+                image_path = f"/images/{product_id}.{extension}"
                 for field in products[product_id]:
                     if field["fieldName"] == "_image":
                         field["value"] = image_path
         
-        # Save to products.json
-        save_products(products)
+        # Save to database
+        database.save_product(product_id, products[product_id], image_data, image_mime_type)
         
         flash('Product updated successfully!')
         return redirect(url_for('admin.index'))
@@ -161,24 +167,8 @@ def delete_product(product_id):
         flash('Product not found.')
         return redirect(url_for('admin.index'))
     
-    # Find image path
-    image_path = None
-    for field in products[product_id]:
-        if field["fieldName"] == "_image":
-            image_path = field["value"]
-    
-    # Delete image file
-    if image_path:
-        image_filename = os.path.basename(image_path)
-        image_file_path = os.path.join(UPLOAD_FOLDER, image_filename)
-        if os.path.exists(image_file_path):
-            os.remove(image_file_path)
-    
-    # Delete product from dict
-    del products[product_id]
-    
-    # Save updated products
-    save_products(products)
+    # Delete product from database (image is stored in DB)
+    database.delete_product(product_id)
     
     flash('Product deleted successfully!')
     return redirect(url_for('admin.index'))
@@ -195,59 +185,22 @@ def view_product(product_id):
 
 @admin_bp.route('/generate_barcode/<product_id>/<code_type>')
 def generate_barcode(product_id, code_type):
-    """Generate and serve a barcode or QR code for a product"""
-    # Make sure the barcodes directory exists
-    os.makedirs(BARCODE_FOLDER, exist_ok=True)
-    
+    """Redirect to the main barcode generation endpoint"""
     products = load_products()
     if product_id not in products:
         return jsonify({"error": "Product not found"}), 404
     
-    # Check if barcode generator is available
-    if not BARCODE_GENERATOR_AVAILABLE:
-        # Create a simple error image
-        from PIL import Image, ImageDraw, ImageFont
-        img = Image.new('RGB', (300, 150), color=(255, 255, 255))
-        d = ImageDraw.Draw(img)
-        d.rectangle([0, 0, 299, 149], outline=(0, 0, 0), width=2)
-        d.text((25, 65), "Barcode generation unavailable", fill=(0, 0, 0))
-        
-        # Save and serve the error image
-        image_path = os.path.join(BARCODE_FOLDER, f"{product_id}_{code_type}_error.png")
-        img.save(image_path)
-        return send_file(image_path, mimetype='image/png')
+    # Map code_type to the expected format for the main endpoint
+    type_mapping = {
+        'qrcode': 'qr',
+        'ean13': 'ean13',
+        'code128': 'code128'
+    }
     
-    generator = BarcodeGenerator()
+    barcode_type = type_mapping.get(code_type, code_type)
     
-    # Content for the code - use the product ID
-    data = product_id
-    
-    # Base filename for the saved code
-    base_filename = f"{product_id}_{code_type}"
-    image_path = os.path.join(BARCODE_FOLDER, f"{base_filename}.png")
-    
-    # Generate the requested code type
-    if code_type == 'qrcode':
-        # Generate QR code with product URL
-        product_url = request.host_url.rstrip('/') + f"/arinfo?barcode={product_id}"
-        img = generator.generate_qr_code(product_url)
-        generator.save_image(img, image_path)
-        
-    elif code_type == 'ean13':
-        # For EAN-13, make sure the product ID is numeric
-        numeric_id = ''.join(filter(str.isdigit, product_id))
-        img = generator.generate_ean13_barcode(numeric_id)
-        generator.save_image(img, image_path)
-        
-    elif code_type == 'code128':
-        img = generator.generate_code128_barcode(data)
-        generator.save_image(img, image_path)
-        
-    else:
-        return jsonify({"error": "Invalid code type"}), 400
-    
-    # Return the image directly
-    return send_file(image_path, mimetype='image/png')
+    # Redirect to the main barcode endpoint which generates dynamically
+    return redirect(f'/barcodes/{product_id}_{barcode_type}.png')
 
 @admin_bp.route('/generate_barcode_page/<product_id>')
 def generate_barcode_page(product_id):
