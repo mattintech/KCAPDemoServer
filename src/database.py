@@ -7,6 +7,13 @@ import base64
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'products.db')
 
+# Reserved tenant IDs that cannot be used
+RESERVED_TENANT_IDS = {
+    'admin', 'api', 'login', 'logout', 'arcontentfields', 'arinfo', 
+    'images', 'barcodes', 'static', 'assets', 'js', 'css', 'tenant',
+    'auth', 'oauth', 'callback', 'webhook', 'health', 'status'
+}
+
 @contextmanager
 def get_db():
     """Context manager for database connections"""
@@ -303,8 +310,12 @@ def get_product_image(product_id: str, tenant_id: str) -> Optional[tuple[bytes, 
             return row['image_data'], row['image_mime_type']
         return None
 
-def get_or_create_tenant(tenant_id: str, username: str = None, password: str = None) -> Dict[str, Any]:
+def get_or_create_tenant(tenant_id: str, username: str = None, password: str = None) -> Optional[Dict[str, Any]]:
     """Get or create a tenant"""
+    # Check if tenant_id is reserved
+    if tenant_id.lower() in RESERVED_TENANT_IDS:
+        return None
+    
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -363,3 +374,30 @@ def get_all_tenants() -> List[Dict[str, Any]]:
             })
         
         return tenants
+
+def delete_tenant(tenant_id: str):
+    """Delete a tenant and all associated data"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # Due to ON DELETE CASCADE, this will also delete all products and product_fields
+        cursor.execute('DELETE FROM tenants WHERE id = ?', (tenant_id,))
+        conn.commit()
+
+def cleanup_reserved_tenants():
+    """Remove any tenants that were accidentally created with reserved IDs"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # Get all tenants
+        cursor.execute('SELECT id FROM tenants')
+        tenants = cursor.fetchall()
+        
+        deleted_count = 0
+        for tenant in tenants:
+            tenant_id = tenant['id']
+            if tenant_id.lower() in RESERVED_TENANT_IDS:
+                cursor.execute('DELETE FROM tenants WHERE id = ?', (tenant_id,))
+                deleted_count += 1
+                print(f"Deleted reserved tenant: {tenant_id}")
+        
+        conn.commit()
+        return deleted_count

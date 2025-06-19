@@ -30,10 +30,20 @@ def index():
     tenants = database.get_all_tenants()
     return render_template('tenant_selection.html', tenants=tenants)
 
+@app.route('/tenant/<tenant:tenant_id>/delete', methods=['POST'])
+def delete_tenant(tenant_id):
+    """Delete a tenant and all its data"""
+    database.delete_tenant(tenant_id)
+    flash(f'Tenant "{tenant_id}" has been deleted successfully.', 'success')
+    return redirect('/')
+
 @app.route('/<tenant:tenant_id>/')
 def tenant_index(tenant_id):
     # Auto-create tenant if it doesn't exist
     tenant = database.get_or_create_tenant(tenant_id)
+    if tenant is None:
+        # Reserved tenant ID or invalid
+        return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
     return render_template('index.html', tenant=tenant)
 
 def check_basic_auth(auth_header, tenant_id):
@@ -48,7 +58,7 @@ def check_basic_auth(auth_header, tenant_id):
         
         # Get tenant credentials from database
         tenant = database.get_or_create_tenant(tenant_id)
-        if username == tenant['username'] and password == tenant['password']:
+        if tenant and username == tenant['username'] and password == tenant['password']:
             return True
     except Exception:
         pass
@@ -227,5 +237,10 @@ if __name__ == '__main__':
         # Optionally rename the JSON file to indicate it's been migrated
         shutil.move(products_file, products_file + '.migrated')
         print("Migration complete.")
+    
+    # Clean up any accidentally created reserved tenants
+    deleted_count = database.cleanup_reserved_tenants()
+    if deleted_count > 0:
+        print(f"Cleaned up {deleted_count} reserved tenant(s)")
     
     app.run(port=5555, host="0.0.0.0", debug=True)
