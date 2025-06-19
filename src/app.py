@@ -28,7 +28,8 @@ def load_products(tenant_id=None):
 def index():
     # Show a tenant selection page or redirect to default
     tenants = database.get_all_tenants()
-    return render_template('tenant_selection.html', tenants=tenants)
+    server_url = database.get_server_url()
+    return render_template('tenant_selection.html', tenants=tenants, server_url=server_url)
 
 @app.route('/tenant/<tenant:tenant_id>/delete', methods=['POST'])
 def delete_tenant(tenant_id):
@@ -36,6 +37,22 @@ def delete_tenant(tenant_id):
     database.delete_tenant(tenant_id)
     flash(f'Tenant "{tenant_id}" has been deleted successfully.', 'success')
     return redirect('/')
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        server_url = request.form.get('server_url', '').strip()
+        if server_url:
+            # Remove trailing slash for consistency
+            server_url = server_url.rstrip('/')
+            database.set_setting('server_url', server_url)
+            flash('Server settings updated successfully.', 'success')
+        else:
+            flash('Please provide a valid server URL.', 'error')
+        return redirect('/settings')
+    
+    server_url = database.get_server_url()
+    return render_template('settings.html', server_url=server_url)
 
 @app.route('/<tenant:tenant_id>/')
 def tenant_index(tenant_id):
@@ -56,8 +73,8 @@ def check_basic_auth(auth_header, tenant_id):
         credentials = base64.b64decode(auth_header[6:]).decode('utf-8')
         username, password = credentials.split(':', 1)
         
-        # Get tenant credentials from database
-        tenant = database.get_or_create_tenant(tenant_id)
+        # Get tenant credentials from database (without creating)
+        tenant = database.get_tenant(tenant_id)
         if tenant and username == tenant['username'] and password == tenant['password']:
             return True
     except Exception:

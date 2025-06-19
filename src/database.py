@@ -107,6 +107,16 @@ def init_database():
             )
         ''')
         
+        # Create settings table for server configuration
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
 
 def migrate_from_json():
@@ -342,10 +352,34 @@ def get_product_image(product_id: str, tenant_id: str) -> Optional[tuple[bytes, 
             return row['image_data'], row['image_mime_type']
         return None
 
+def get_tenant(tenant_id: str) -> Optional[Dict[str, Any]]:
+    """Get a tenant without creating it"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Check if tenant exists
+        cursor.execute('SELECT id, name, username, password FROM tenants WHERE id = ?', (tenant_id,))
+        row = cursor.fetchone()
+        
+        if row:
+            return {
+                'id': row['id'],
+                'name': row['name'],
+                'username': row['username'],
+                'password': row['password']
+            }
+        return None
+
 def get_or_create_tenant(tenant_id: str, username: str = None, password: str = None) -> Optional[Dict[str, Any]]:
     """Get or create a tenant"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+    
     # Check if tenant_id is reserved
-    if tenant_id.lower() in RESERVED_TENANT_IDS:
+    if tenant_id in RESERVED_TENANT_IDS:
         return None
     
     with get_db() as conn:
@@ -366,10 +400,12 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
             # Create new tenant with default credentials
             default_username = username or 'admin'
             default_password = password or 'admin'
+            # Preserve original casing for display name
+            display_name = tenant_id.replace('-', ' ').replace('_', ' ').title()
             cursor.execute('''
                 INSERT INTO tenants (id, name, username, password)
                 VALUES (?, ?, ?, ?)
-            ''', (tenant_id, tenant_id.title(), default_username, default_password))
+            ''', (tenant_id, display_name, default_username, default_password))
             conn.commit()
             
             # Initialize default AR fields for the new tenant
@@ -377,7 +413,7 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
             
             return {
                 'id': tenant_id,
-                'name': tenant_id.title(),
+                'name': display_name,
                 'username': default_username,
                 'password': default_password
             }
@@ -555,3 +591,29 @@ def get_product_image_by_field(product_id: str, tenant_id: str, field_name: str)
         if row and row['image_data']:
             return row['image_data'], row['image_mime_type']
         return None
+
+def get_setting(key: str, default_value: str = None) -> Optional[str]:
+    """Get a setting value by key"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT value FROM settings WHERE key = ?', (key,))
+        row = cursor.fetchone()
+        
+        if row:
+            return row['value']
+        return default_value
+
+def set_setting(key: str, value: str):
+    """Set a setting value"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
+        ''', (key, value, value))
+        conn.commit()
+
+def get_server_url() -> str:
+    """Get the configured server URL or return a default"""
+    return get_setting('server_url', 'http://localhost:5000')

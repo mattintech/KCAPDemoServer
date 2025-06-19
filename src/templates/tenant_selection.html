@@ -38,6 +38,7 @@
                                             <small>{{ tenant.created_at }}</small>
                                         </div>
                                         <p class="mb-1">Username: {{ tenant.username }}</p>
+                                        <p class="mb-1"><strong>Knox Capture AR Template URL:</strong> <code>{{ server_url }}/{{ tenant.id }}/</code></p>
                                         <small>ID: {{ tenant.id }}</small>
                                     </a>
                                     <form method="POST" action="/tenant/{{ tenant.id }}/delete" class="ms-3" onsubmit="return confirmDelete('{{ tenant.name }}')">
@@ -73,6 +74,7 @@
                         <strong>Note:</strong> When you access a tenant URL directly (e.g., /my-tenant/), 
                         it will be automatically created with default credentials (admin/admin).
                     </p>
+                    <a href="/settings" class="btn btn-secondary mt-3">Server Settings</a>
                 </div>
             </div>
         </div>
