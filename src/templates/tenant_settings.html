@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+
+{% block title %}Settings - {{ tenant.name }} - KCAP Demo Server{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Settings - {{ tenant.name }}</h1>
+            <a href="/{{ tenant.id }}/" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <div class="row">
+            <!-- Device Password Section -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Device Authentication</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Configure the username and password for device authentication.</p>
+                        <form method="POST" action="/{{ tenant.id }}/settings/credentials">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ tenant.username }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Enter new password to change" autocomplete="new-password">
+                                <div class="form-text">Leave blank to keep current password</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Update Credentials
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom AR Fields Section -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Custom AR Content Fields</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Manage the fields that are returned in the AR content API.</p>
+                        <a href="/{{ tenant.id }}/admin/ar_fields" class="btn btn-primary">
+                            <i class="bi bi-gear"></i> Manage AR Fields
+                        </a>
+                        
+                        {% if custom_fields %}
+                        <div class="mt-3">
+                            <h6>Current Fields:</h6>
+                            <ul class="list-group">
+                                {% for field in custom_fields %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ field.label }}</strong>
+                                        <small class="text-muted">({{ field.fieldName }})</small>
+                                    </div>
+                                    <span class="badge bg-secondary">{{ field.fieldType }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Settings -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Tenant Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">Tenant ID:</dt>
+                            <dd class="col-sm-9"><code>{{ tenant.id }}</code></dd>
+                            
+                            <dt class="col-sm-3">Tenant Name:</dt>
+                            <dd class="col-sm-9">{{ tenant.name }}</dd>
+                            
+                            <dt class="col-sm-3">API Endpoint:</dt>
+                            <dd class="col-sm-9"><code>{{ server_url }}/{{ tenant.id }}/arinfo</code></dd>
+                            
+                            <dt class="col-sm-3">Created:</dt>
+                            <dd class="col-sm-9">{{ tenant.created_at }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -70,7 +70,46 @@ def tenant_index(tenant_id):
     if tenant is None:
         # Reserved tenant ID or invalid
         return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
-    return render_template('index.html', tenant=tenant)
+    
+    # Load products for this tenant
+    products = load_products(tenant_id)
+    
+    return render_template('index.html', tenant=tenant, products=products)
+
+@app.route('/<tenant:tenant_id>/settings')
+def tenant_settings(tenant_id):
+    # Get tenant
+    tenant = database.get_or_create_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
+    
+    # Get custom AR fields for this tenant
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+    
+    # Get server URL for API endpoint display
+    server_url = database.get_server_url()
+    
+    return render_template('tenant_settings.html', tenant=tenant, custom_fields=custom_fields, server_url=server_url)
+
+@app.route('/<tenant:tenant_id>/settings/credentials', methods=['POST'])
+def update_tenant_credentials(tenant_id):
+    # Get tenant
+    tenant = database.get_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": "Tenant not found"}), 404
+    
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    
+    if not username:
+        flash('Username is required.', 'error')
+        return redirect(f'/{tenant_id}/settings')
+    
+    # Update credentials
+    database.update_tenant_credentials(tenant_id, username, password if password else None)
+    
+    flash('Credentials updated successfully.', 'success')
+    return redirect(f'/{tenant_id}/settings')
 
 def check_basic_auth(auth_header, tenant_id):
     """Validate Basic authentication credentials for a tenant"""
@@ -119,10 +158,14 @@ def get_ar_info(tenant_id):
     def filter_and_process_fields(product_fields):
         # Filter to only include fields defined in custom AR fields
         filtered_fields = []
+        
+        # Get field types for all custom fields
+        field_types = {f['fieldName']: f['fieldType'] for f in custom_fields}
+        
         for field in product_fields:
             if field['fieldName'] in custom_field_names:
-                # Create absolute URL for image fields
-                if field['fieldName'] == '_image' and field['value']:
+                # Create absolute URL for IMAGE_URI fields
+                if field_types.get(field['fieldName']) == 'IMAGE_URI' and field['value']:
                     # If it's already an absolute URL, leave it as is
                     if not field['value'].startswith('http'):
                         # Build absolute URL using request host with tenant
