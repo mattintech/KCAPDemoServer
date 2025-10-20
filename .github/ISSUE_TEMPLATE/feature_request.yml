@@ -1,0 +1,155 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for the Flask AR API Demo Server
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - API Endpoints
+        - Admin Interface
+        - Barcode Generation
+        - Image Management
+        - Authentication/Authorization
+        - Database/Models
+        - Product Management
+        - Tenant Management
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New Functionality
+        - Enhancement to Existing Feature
+        - UI/UX Improvement
+        - Performance Improvement
+        - Developer Experience
+        - Documentation
+        - Testing
+        - Security
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm frustrated when... / There's no way to... / It would be helpful if...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see
+      placeholder: I would like to be able to... / The system should... / Add a new endpoint that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: I've thought about... / Another approach could be... / Currently using...
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe your use case and how this feature would benefit you or others
+      placeholder: |
+        This feature would allow me to...
+        It would be useful for...
+        The expected workflow would be...
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Ideas
+      description: If you have ideas about how to implement this feature, please share them
+      placeholder: |
+        This could be implemented by...
+        Possible technical approach...
+        Required changes...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be useful
+        - Important
+        - Critical
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking Change
+      description: Would this feature require breaking changes to the API or existing functionality?
+      options:
+        - "No"
+        - "Yes"
+        - "Unsure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: If applicable, add mockups, screenshots, or examples from other systems
+      placeholder: Drag and drop images or paste links here...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, links, or references about the feature request
+      placeholder: Related to... / Similar to... / Reference documentation...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been requested
+          required: true
+        - label: I have clearly described the feature and its benefits
+          required: true
+        - label: I am willing to help test this feature if implemented
+          required: false
+        - label: I am willing to contribute to the implementation
+          required: false

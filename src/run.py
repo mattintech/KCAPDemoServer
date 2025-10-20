@@ -4,7 +4,9 @@ from app import create_app
 from app.models import TenantModel
 
 # Create application
-app = create_app(os.environ.get('FLASK_ENV', 'development'))
+# Use FLASK_DEBUG instead of deprecated FLASK_ENV
+config_name = 'development' if os.environ.get('FLASK_DEBUG', '1') == '1' else 'production'
+app = create_app(config_name)
 
 if __name__ == '__main__':
     with app.app_context():
