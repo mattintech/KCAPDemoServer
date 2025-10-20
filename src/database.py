@@ -116,7 +116,15 @@ def init_database():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
+        # Add barcode_type column to tenants table if it doesn't exist
+        try:
+            cursor.execute('ALTER TABLE tenants ADD COLUMN barcode_type TEXT DEFAULT "code128"')
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Column already exists
+            pass
+
         conn.commit()
 
 def migrate_from_json():
@@ -372,20 +380,22 @@ def get_tenant(tenant_id: str) -> Optional[Dict[str, Any]]:
     """Get a tenant without creating it"""
     # Normalize tenant_id to lowercase
     tenant_id = tenant_id.lower()
-    
+
     with get_db() as conn:
         cursor = conn.cursor()
-        
+
         # Check if tenant exists
-        cursor.execute('SELECT id, name, username, password FROM tenants WHERE id = ?', (tenant_id,))
+        cursor.execute('SELECT id, name, username, password, created_at, barcode_type FROM tenants WHERE id = ?', (tenant_id,))
         row = cursor.fetchone()
-        
+
         if row:
             return {
                 'id': row['id'],
                 'name': row['name'],
                 'username': row['username'],
-                'password': row['password']
+                'password': row['password'],
+                'created_at': row['created_at'],
+                'barcode_type': row['barcode_type'] or 'code128'
             }
         return None
 
@@ -393,24 +403,26 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
     """Get or create a tenant"""
     # Normalize tenant_id to lowercase
     tenant_id = tenant_id.lower()
-    
+
     # Check if tenant_id is reserved
     if tenant_id in RESERVED_TENANT_IDS:
         return None
-    
+
     with get_db() as conn:
         cursor = conn.cursor()
-        
+
         # Check if tenant exists
-        cursor.execute('SELECT id, name, username, password FROM tenants WHERE id = ?', (tenant_id,))
+        cursor.execute('SELECT id, name, username, password, created_at, barcode_type FROM tenants WHERE id = ?', (tenant_id,))
         row = cursor.fetchone()
-        
+
         if row:
             return {
                 'id': row['id'],
                 'name': row['name'],
                 'username': row['username'],
-                'password': row['password']
+                'password': row['password'],
+                'created_at': row['created_at'],
+                'barcode_type': row['barcode_type'] or 'code128'
             }
         else:
             # Create new tenant with default credentials
@@ -426,26 +438,46 @@ def get_or_create_tenant(tenant_id: str, username: str = None, password: str = N
             
             # Initialize default AR fields for the new tenant
             init_default_ar_fields(tenant_id)
-            
+
+            # Get the created_at timestamp and barcode_type from the database
+            cursor.execute('SELECT created_at, barcode_type FROM tenants WHERE id = ?', (tenant_id,))
+            created_row = cursor.fetchone()
+
             return {
                 'id': tenant_id,
                 'name': display_name,
                 'username': default_username,
-                'password': default_password
+                'password': default_password,
+                'created_at': created_row['created_at'] if created_row else None,
+                'barcode_type': created_row['barcode_type'] if created_row else 'code128'
             }
 
 def update_tenant_credentials(tenant_id: str, username: str, password: str):
     """Update tenant credentials"""
     # Normalize tenant_id to lowercase
     tenant_id = tenant_id.lower()
-    
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            UPDATE tenants 
+            UPDATE tenants
             SET username = ?, password = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (username, password, tenant_id))
+        conn.commit()
+
+def update_tenant_barcode_type(tenant_id: str, barcode_type: str):
+    """Update tenant barcode type"""
+    # Normalize tenant_id to lowercase
+    tenant_id = tenant_id.lower()
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE tenants
+            SET barcode_type = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (barcode_type, tenant_id))
         conn.commit()
 
 def get_all_tenants() -> List[Dict[str, Any]]:

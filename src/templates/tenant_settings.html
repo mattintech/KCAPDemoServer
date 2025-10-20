@@ -24,17 +24,40 @@
                         <form method="POST" action="/{{ tenant.id }}/settings/credentials">
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" 
+                                <input type="text" class="form-control" id="username" name="username"
                                        value="{{ tenant.username }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" 
+                                <input type="password" class="form-control" id="password" name="password"
                                        placeholder="Enter new password to change" autocomplete="new-password">
                                 <div class="form-text">Leave blank to keep current password</div>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Update Credentials
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-upc-scan"></i> Barcode Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Configure the default barcode type for products.</p>
+                        <form method="POST" action="/{{ tenant.id }}/settings/barcode">
+                            <div class="mb-3">
+                                <label for="barcode_type" class="form-label">Barcode Type</label>
+                                <select class="form-select" id="barcode_type" name="barcode_type" required>
+                                    <option value="code128" {% if tenant.barcode_type == 'code128' %}selected{% endif %}>Code 128</option>
+                                    <option value="ean13" {% if tenant.barcode_type == 'ean13' %}selected{% endif %}>EAN-13</option>
+                                    <option value="qr" {% if tenant.barcode_type == 'qr' %}selected{% endif %}>QR Code</option>
+                                </select>
+                                <div class="form-text">This will be used when displaying product barcodes</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Update Barcode Type
                             </button>
                         </form>
                     </div>
@@ -90,40 +113,13 @@
                             <dd class="col-sm-9">{{ tenant.name }}</dd>
                             
                             <dt class="col-sm-3">API Endpoint:</dt>
-                            <dd class="col-sm-9">
-                                <code>{{ server_url }}/{{ tenant.id }}/arinfo</code>
-                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#qrModal">
-                                    <i class="bi bi-qr-code"></i> QR Code
-                                </button>
-                            </dd>
+                            <dd class="col-sm-9"><code>{{ server_url }}/{{ tenant.id }}/arinfo</code></dd>
                             
                             <dt class="col-sm-3">Created:</dt>
                             <dd class="col-sm-9">{{ tenant.created_at }}</dd>
                         </dl>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- QR Code Modal -->
-<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="qrModalLabel">API Endpoint QR Code</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p class="text-muted mb-3">Scan this QR code to access the AR API endpoint:</p>
-                <div class="mb-3">
-                    <img src="/{{ tenant.id }}/qrcode/arinfo" alt="AR API QR Code" class="img-fluid" style="max-width: 300px;">
-                </div>
-                <code class="d-block mt-2">{{ server_url }}/{{ tenant.id }}/arinfo</code>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

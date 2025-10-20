@@ -98,18 +98,37 @@ def update_tenant_credentials(tenant_id):
     tenant = database.get_tenant(tenant_id)
     if tenant is None:
         return jsonify({"error": "Tenant not found"}), 404
-    
+
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
-    
+
     if not username:
         flash('Username is required.', 'error')
         return redirect(f'/{tenant_id}/settings')
-    
+
     # Update credentials
     database.update_tenant_credentials(tenant_id, username, password if password else None)
-    
+
     flash('Credentials updated successfully.', 'success')
+    return redirect(f'/{tenant_id}/settings')
+
+@app.route('/<tenant:tenant_id>/settings/barcode', methods=['POST'])
+def update_tenant_barcode_type(tenant_id):
+    # Get tenant
+    tenant = database.get_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": "Tenant not found"}), 404
+
+    barcode_type = request.form.get('barcode_type', '').strip()
+
+    if not barcode_type:
+        flash('Barcode type is required.', 'error')
+        return redirect(f'/{tenant_id}/settings')
+
+    # Update barcode type
+    database.update_tenant_barcode_type(tenant_id, barcode_type)
+
+    flash('Barcode type updated successfully.', 'success')
     return redirect(f'/{tenant_id}/settings')
 
 def check_basic_auth(auth_header, tenant_id):
@@ -381,14 +400,13 @@ def serve_barcode(tenant_id, filename):
 
 # Import product management routes
 from routes.admin import (add_product, edit_product, delete_product,
-                         generate_barcode, generate_barcode_page, manage_ar_fields)
+                         generate_barcode, manage_ar_fields)
 
 # Register product management routes (remove /admin/ from paths)
 app.add_url_rule('/<tenant:tenant_id>/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
 app.add_url_rule('/<tenant:tenant_id>/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
 app.add_url_rule('/<tenant:tenant_id>/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
 app.add_url_rule('/<tenant:tenant_id>/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
-app.add_url_rule('/<tenant:tenant_id>/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
 app.add_url_rule('/<tenant:tenant_id>/ar_fields', 'admin.manage_ar_fields', manage_ar_fields, methods=['GET', 'POST'])
 
 # Register API routes with tenant prefix

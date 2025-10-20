@@ -61,9 +61,12 @@
                                     <a href="/{{ tenant.id }}/edit/{{ product_id }}" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    <a href="/{{ tenant.id }}/generate_barcode_page/{{ product_id }}" class="btn btn-sm btn-outline-success">
-                                        <i class="bi bi-upc-scan"></i> Barcodes
-                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="modal" data-bs-target="#barcodeModal"
+                                            data-product-id="{{ product_id }}"
+                                            data-product-name="{% set matching_fields = product_data|selectattr('fieldName', 'equalto', '_name')|list %}{{ matching_fields[0].value if matching_fields else product_id }}">
+                                        <i class="bi bi-upc-scan"></i> Barcode
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-outline-danger"
                                             data-bs-toggle="modal" data-bs-target="#deleteModal"
                                             data-product-id="{{ product_id }}"
@@ -98,6 +101,28 @@
     </div>
 </div>
 
+<!-- Barcode Modal -->
+<div class="modal fade" id="barcodeModal" tabindex="-1" aria-labelledby="barcodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="barcodeModalLabel">Product Barcode</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <h6 id="barcode-product-name" class="mb-3"></h6>
+                <div class="mb-3">
+                    <img id="barcode-image" src="" alt="Product Barcode" class="img-fluid" style="max-width: 400px;">
+                </div>
+                <p class="text-muted"><small>Product ID: <code id="barcode-product-id"></code></small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -121,6 +146,31 @@
 
 {% block extra_js %}
 <script>
+    // Barcode modal functionality
+    const barcodeModal = document.getElementById('barcodeModal');
+    if (barcodeModal) {
+        barcodeModal.addEventListener('show.bs.modal', function (event) {
+            // Button that triggered the modal
+            const button = event.relatedTarget;
+
+            // Extract product info from data attributes
+            const productId = button.getAttribute('data-product-id');
+            const productName = button.getAttribute('data-product-name');
+
+            // Update modal content
+            const modalProductName = document.getElementById('barcode-product-name');
+            const modalProductId = document.getElementById('barcode-product-id');
+            const barcodeImage = document.getElementById('barcode-image');
+
+            modalProductName.textContent = productName;
+            modalProductId.textContent = productId;
+
+            // Set barcode image source using tenant's barcode type setting
+            const barcodeType = '{{ tenant.barcode_type or "code128" }}';
+            barcodeImage.src = '/{{ tenant.id }}/barcodes/' + productId + '_' + barcodeType + '.png';
+        });
+    }
+
     // Delete confirmation modal functionality
     const deleteModal = document.getElementById('deleteModal');
     if (deleteModal) {

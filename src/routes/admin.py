@@ -1,23 +1,8 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import render_template, request, redirect, url_for, flash, jsonify
 import os
-import json
-import uuid
-import io
-from werkzeug.utils import secure_filename
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import database
-
-# Import barcode generator class, but handle the case if it fails
-try:
-    from utils.barcode_generator import BarcodeGenerator
-    BARCODE_GENERATOR_AVAILABLE = True
-except ImportError:
-    BARCODE_GENERATOR_AVAILABLE = False
-    class BarcodeGenerator:
-        @staticmethod
-        def check_dependencies():
-            return {'qrcode': False, 'barcode': False, 'pillow': False}
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__), '../data')
 PRODUCTS_FILE = os.path.join(DATA_FOLDER, 'products.json')
@@ -343,40 +328,6 @@ def generate_barcode(tenant_id, product_id, code_type):
     
     # Redirect to the main barcode endpoint which generates dynamically
     return redirect(f'/{tenant_id}/barcodes/{product_id}_{barcode_type}.png')
-
-def generate_barcode_page(tenant_id, product_id):
-    """Show a page with different barcode options for a product"""
-    products = load_products(tenant_id)
-
-    if product_id not in products:
-        flash('Product not found.')
-        return redirect(f'/{tenant_id}/')
-    
-    # Extract product data
-    product_data = {}
-    for field in products[product_id]:
-        field_name = field["fieldName"][1:] if field["fieldName"].startswith('_') else field["fieldName"]
-        product_data[field_name] = field["value"]
-    
-    # Add product ID
-    product_data['id'] = product_id
-    
-    # Check if barcode generation is available
-    dependency_status = {}
-    if BARCODE_GENERATOR_AVAILABLE:
-        dependency_status = BarcodeGenerator.check_dependencies()
-    else:
-        dependency_status = {
-            'qrcode': False,
-            'barcode': False,
-            'pillow': False
-        }
-    
-    return render_template('admin/generate_barcode.html', 
-                          product_id=product_id, 
-                          product=product_data,
-                          dependencies=dependency_status,
-                          tenant_id=tenant_id)
 
 def manage_credentials(tenant_id):
     """Manage tenant login credentials"""
