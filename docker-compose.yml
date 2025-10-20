@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: kcap-demo-server
+    ports:
+      - "5555:5555"
+    environment:
+      - FLASK_DEBUG=1
+    env_file:
+      - .env
+    volumes:
+      # Mount static directories for persistent storage
+      - ./src/app/static/images:/app/src/app/static/images
+      - ./src/app/static/barcodes:/app/src/app/static/barcodes
+      # Mount instance directory for database persistence
+      - ./src/app/instance:/app/src/app/instance
+    restart: unless-stopped

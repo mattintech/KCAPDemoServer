@@ -36,6 +36,47 @@ This project is a simple Flask API for demonstrating AR content retrieval for ba
 
 ## Setup
 
+### Option 1: Docker (Recommended)
+
+1. **Clone the Repository:**
+
+```bash
+git clone <repository_url>
+cd <repository_folder>
+```
+
+2. **Configure Environment:**
+
+Copy `.env.example` to `.env` and update with your Azure AD credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your Azure AD configuration values.
+
+3. **Run with Docker Compose:**
+
+```bash
+docker-compose up -d
+```
+
+The application will be available at `http://localhost:5555`
+
+4. **View Logs:**
+
+```bash
+docker-compose logs -f
+```
+
+5. **Stop the Application:**
+
+```bash
+docker-compose down
+```
+
+### Option 2: Local Python Setup
+
 1. **Clone the Repository:**
 
 ```bash
@@ -49,23 +90,26 @@ cd <repository_folder>
 pip install -r requirements.txt
 ```
 
-3. **Run the Server:**
+3. **Configure Environment:**
+
+Copy `.env.example` to `.env` and update with your configuration.
+
+4. **Run the Server:**
 
 ```bash
-python app.py
+python src/run.py
 ```
 
-The application will automatically create the necessary directories and initialize the products.json file if it doesn't exist.
+The application will automatically create the necessary directories and initialize the database if it doesn't exist.
 
-4. **Access the Admin Interface:**
+### Accessing the Application
 
-Open your browser and navigate to:
+**Admin Interface:**
 ```
 http://localhost:5555/admin
 ```
 
-5. **Test the Endpoints:**
-
+**API Endpoints:**
 * Login: `GET http://localhost:5555/login`
 * Content Fields: `GET http://localhost:5555/arcontentfields`
 * AR Info (Example): `GET http://localhost:5555/arinfo?barcode=123456`
