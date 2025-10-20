@@ -1,0 +1,170 @@
+{% extends "layout.html" %}
+
+{% block title %}Manage AR Fields - KCAP Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>Manage AR Content Fields</h1>
+        <p>Configure the fields that will be returned by the /arcontentfields and /arinfo endpoints.</p>
+    </div>
+    <a href="/{{ tenant_id }}/settings" class="btn btn-secondary">Back to Settings</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Current AR Fields</h5>
+    </div>
+    <div class="card-body">
+        {% if custom_fields %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Field Name</th>
+                    <th>Label</th>
+                    <th>Type</th>
+                    <th>Editable</th>
+                    <th>Display Order</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for field in custom_fields %}
+                <tr>
+                    <td>{{ field.fieldName }}</td>
+                    <td>{{ field.label }}</td>
+                    <td>{{ field.fieldType }}</td>
+                    <td>{{ field.editable }}</td>
+                    <td>{{ field.displayOrder }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" 
+                                data-id="{{ field.id }}"
+                                data-fieldname="{{ field.fieldName }}"
+                                data-label="{{ field.label }}"
+                                data-fieldtype="{{ field.fieldType }}"
+                                data-editable="{{ field.editable }}"
+                                data-displayorder="{{ field.displayOrder }}"
+                                onclick="editField(this)">Edit</button>
+                        <form method="POST" style="display: inline-block;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="field_id" value="{{ field.id }}">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this field?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No custom fields defined. Default fields will be used.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Add/Edit AR Field</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="fieldForm">
+            <input type="hidden" name="action" value="add" id="formAction">
+            <input type="hidden" name="field_id" value="" id="fieldId">
+            
+            <div class="form-group mb-3">
+                <label for="fieldName">Field Name</label>
+                <input type="text" class="form-control" id="fieldName" name="fieldName" required>
+                <small class="form-text text-muted">Use underscore prefix for system fields (e.g., _id, _price)</small>
+                <small class="form-text text-warning" id="fieldNameWarning" style="display: none;">Field name cannot be changed when editing</small>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="label">Label</label>
+                <input type="text" class="form-control" id="label" name="label" required>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="fieldType">Field Type</label>
+                <select class="form-control" id="fieldType" name="fieldType" required>
+                    {% for type in field_types %}
+                    <option value="{{ type }}">{{ type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="editable">Editable</label>
+                <select class="form-control" id="editable" name="editable">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="displayOrder">Display Order</label>
+                <input type="number" class="form-control" id="displayOrder" name="displayOrder" value="0">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Field</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function editField(button) {
+    // Get data from button attributes
+    var fieldData = {
+        id: button.getAttribute('data-id'),
+        fieldName: button.getAttribute('data-fieldname'),
+        label: button.getAttribute('data-label'),
+        fieldType: button.getAttribute('data-fieldtype'),
+        editable: button.getAttribute('data-editable'),
+        displayOrder: button.getAttribute('data-displayorder')
+    };
+    
+    // Populate form
+    document.getElementById('formAction').value = 'update';
+    document.getElementById('fieldId').value = fieldData.id;
+    document.getElementById('fieldName').value = fieldData.fieldName;
+    document.getElementById('label').value = fieldData.label;
+    document.getElementById('fieldType').value = fieldData.fieldType;
+    document.getElementById('editable').value = fieldData.editable;
+    document.getElementById('displayOrder').value = fieldData.displayOrder;
+    
+    // Disable field name when editing and show warning
+    document.getElementById('fieldName').disabled = true;
+    document.getElementById('fieldNameWarning').style.display = 'block';
+    
+    // Update form heading
+    var formCard = document.querySelector('.card:last-child .card-header h5');
+    if (formCard) {
+        formCard.textContent = 'Edit AR Field';
+    }
+    
+    // Change button text
+    document.querySelector('button[type="submit"]').textContent = 'Update Field';
+    
+    // Scroll to form
+    document.getElementById('fieldForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetForm() {
+    document.getElementById('formAction').value = 'add';
+    document.getElementById('fieldId').value = '';
+    document.getElementById('fieldForm').reset();
+    
+    // Enable field name and hide warning
+    document.getElementById('fieldName').disabled = false;
+    document.getElementById('fieldNameWarning').style.display = 'none';
+    
+    // Reset form heading
+    var formCard = document.querySelector('.card:last-child .card-header h5');
+    if (formCard) {
+        formCard.textContent = 'Add/Edit AR Field';
+    }
+    
+    // Reset button text
+    document.querySelector('button[type="submit"]').textContent = 'Save Field';
+}
+</script>
+{% endblock %}

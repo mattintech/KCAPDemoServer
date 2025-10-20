@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select or Create Tenant - KCAP Demo Server</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
     <div class="container mt-5">
@@ -38,8 +39,15 @@
                                             <small>{{ tenant.created_at }}</small>
                                         </div>
                                         <p class="mb-1">Username: {{ tenant.username }}</p>
+                                        <p class="mb-1">
+                                            <strong>Knox Capture AR Template URL:</strong>
+                                            <code>{{ server_url }}/{{ tenant.id }}/</code>
+                                        </p>
                                         <small>ID: {{ tenant.id }}</small>
                                     </a>
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#qrModal-{{ tenant.id }}" onclick="event.stopPropagation();">
+                                        <i class="bi bi-qr-code"></i>
+                                    </button>
                                     <form method="POST" action="/tenant/{{ tenant.id }}/delete" class="ms-3" onsubmit="return confirmDelete('{{ tenant.name }}')">
                                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                     </form>
@@ -73,11 +81,36 @@
                         <strong>Note:</strong> When you access a tenant URL directly (e.g., /my-tenant/), 
                         it will be automatically created with default credentials (admin/admin).
                     </p>
+                    <a href="/settings" class="btn btn-secondary mt-3">Server Settings</a>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- QR Code Modals for each tenant -->
+    {% for tenant in tenants %}
+    <div class="modal fade" id="qrModal-{{ tenant.id }}" tabindex="-1" aria-labelledby="qrModalLabel-{{ tenant.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qrModalLabel-{{ tenant.id }}">AR Template URL QR Code - {{ tenant.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-muted mb-3">Scan this QR code for the Knox Capture AR Template URL:</p>
+                    <div class="mb-3">
+                        <img src="/{{ tenant.id }}/qrcode/template" alt="AR Template QR Code" class="img-fluid" style="max-width: 300px;">
+                    </div>
+                    <code class="d-block mt-2">{{ server_url }}/{{ tenant.id }}/</code>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const reservedIds = ['admin', 'api', 'login', 'logout', 'arcontentfields', 'arinfo', 
@@ -88,11 +121,14 @@
             e.preventDefault();
             const tenantId = document.getElementById('tenantId').value;
             if (tenantId) {
-                if (reservedIds.includes(tenantId.toLowerCase())) {
+                // Convert to lowercase for consistency
+                const normalizedId = tenantId.toLowerCase();
+                if (reservedIds.includes(normalizedId)) {
                     alert(`"${tenantId}" is a reserved name and cannot be used as a tenant ID.`);
                     return;
                 }
-                window.location.href = '/' + tenantId + '/';
+                // Use the normalized (lowercase) ID in the URL
+                window.location.href = '/' + normalizedId + '/';
             }
         });
         

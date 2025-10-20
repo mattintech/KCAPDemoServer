@@ -8,6 +8,7 @@ from barcode.writer import ImageWriter
 from io import BytesIO
 import shutil
 from werkzeug.routing import BaseConverter
+from functools import wraps
 
 app = Flask(__name__)
 # Set DATA_FOLDER to the absolute path of the data directory inside src
@@ -17,6 +18,14 @@ app.config['SECRET_KEY'] = 'dev-key-for-demo-only'
 # Custom converter for tenant IDs
 class TenantConverter(BaseConverter):
     regex = '[a-zA-Z0-9_-]+'
+    
+    def to_python(self, value):
+        # Convert to lowercase when parsing from URL
+        return value.lower()
+    
+    def to_url(self, value):
+        # Convert to lowercase when generating URLs
+        return value.lower()
 
 app.url_map.converters['tenant'] = TenantConverter
 
@@ -28,7 +37,8 @@ def load_products(tenant_id=None):
 def index():
     # Show a tenant selection page or redirect to default
     tenants = database.get_all_tenants()
-    return render_template('tenant_selection.html', tenants=tenants)
+    server_url = database.get_server_url()
+    return render_template('tenant_selection.html', tenants=tenants, server_url=server_url)
 
 @app.route('/tenant/<tenant:tenant_id>/delete', methods=['POST'])
 def delete_tenant(tenant_id):
@@ -37,6 +47,22 @@ def delete_tenant(tenant_id):
     flash(f'Tenant "{tenant_id}" has been deleted successfully.', 'success')
     return redirect('/')
 
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        server_url = request.form.get('server_url', '').strip()
+        if server_url:
+            # Remove trailing slash for consistency
+            server_url = server_url.rstrip('/')
+            database.set_setting('server_url', server_url)
+            flash('Server settings updated successfully.', 'success')
+        else:
+            flash('Please provide a valid server URL.', 'error')
+        return redirect('/settings')
+    
+    server_url = database.get_server_url()
+    return render_template('settings.html', server_url=server_url)
+
 @app.route('/<tenant:tenant_id>/')
 def tenant_index(tenant_id):
     # Auto-create tenant if it doesn't exist
@@ -44,7 +70,66 @@ def tenant_index(tenant_id):
     if tenant is None:
         # Reserved tenant ID or invalid
         return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
-    return render_template('index.html', tenant=tenant)
+
+    # Load products for this tenant
+    products = load_products(tenant_id)
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+
+    return render_template('index.html', tenant=tenant, products=products, custom_fields=custom_fields)
+
+@app.route('/<tenant:tenant_id>/settings')
+def tenant_settings(tenant_id):
+    # Get tenant
+    tenant = database.get_or_create_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
+    
+    # Get custom AR fields for this tenant
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+    
+    # Get server URL for API endpoint display
+    server_url = database.get_server_url()
+    
+    return render_template('tenant_settings.html', tenant=tenant, custom_fields=custom_fields, server_url=server_url)
+
+@app.route('/<tenant:tenant_id>/settings/credentials', methods=['POST'])
+def update_tenant_credentials(tenant_id):
+    # Get tenant
+    tenant = database.get_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": "Tenant not found"}), 404
+
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+
+    if not username:
+        flash('Username is required.', 'error')
+        return redirect(f'/{tenant_id}/settings')
+
+    # Update credentials
+    database.update_tenant_credentials(tenant_id, username, password if password else None)
+
+    flash('Credentials updated successfully.', 'success')
+    return redirect(f'/{tenant_id}/settings')
+
+@app.route('/<tenant:tenant_id>/settings/barcode', methods=['POST'])
+def update_tenant_barcode_type(tenant_id):
+    # Get tenant
+    tenant = database.get_tenant(tenant_id)
+    if tenant is None:
+        return jsonify({"error": "Tenant not found"}), 404
+
+    barcode_type = request.form.get('barcode_type', '').strip()
+
+    if not barcode_type:
+        flash('Barcode type is required.', 'error')
+        return redirect(f'/{tenant_id}/settings')
+
+    # Update barcode type
+    database.update_tenant_barcode_type(tenant_id, barcode_type)
+
+    flash('Barcode type updated successfully.', 'success')
+    return redirect(f'/{tenant_id}/settings')
 
 def check_basic_auth(auth_header, tenant_id):
     """Validate Basic authentication credentials for a tenant"""
@@ -56,8 +141,8 @@ def check_basic_auth(auth_header, tenant_id):
         credentials = base64.b64decode(auth_header[6:]).decode('utf-8')
         username, password = credentials.split(':', 1)
         
-        # Get tenant credentials from database
-        tenant = database.get_or_create_tenant(tenant_id)
+        # Get tenant credentials from database (without creating)
+        tenant = database.get_tenant(tenant_id)
         if tenant and username == tenant['username'] and password == tenant['password']:
             return True
     except Exception:
@@ -76,44 +161,94 @@ def login(tenant_id):
 
 @app.route('/<tenant:tenant_id>/arcontentfields', methods=['GET'])
 def get_ar_content_fields(tenant_id):
-    # Return a fixed set of attributes (tenant_id could be used for custom fields in the future)
-    fields = [
-        {"fieldName": "_id", "label": "Item ID", "editable": "false", "fieldType": "TEXT"},
-        {"fieldName": "_price", "label": "Sale Price", "editable": "true", "fieldType": "TEXT"},
-        {"fieldName": "_image", "label": "Image", "editable": "false", "fieldType": "IMAGE_URI"}
-    ]
+    # Get custom fields defined for this tenant
+    fields = database.get_custom_ar_fields(tenant_id)
     return jsonify(fields), 200
 
-@app.route('/<tenant:tenant_id>/arinfo', methods=['GET'])
+@app.route('/<tenant:tenant_id>/arinfo', methods=['GET', 'POST'])
 def get_ar_info(tenant_id):
     barcode = request.args.get('barcode')
     products = load_products(tenant_id)
-    
-    # Helper function to convert relative image paths to absolute URLs
-    def make_absolute_urls(product_fields):
-        # Create absolute URL for image fields
+
+    # Get custom AR fields for this tenant
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+    custom_field_names = [f['fieldName'] for f in custom_fields]
+
+    # Handle POST request - update product fields
+    if request.method == 'POST':
+        if not barcode:
+            return jsonify({"error": "Barcode parameter required"}), 400
+
+        if barcode not in products:
+            return jsonify({"error": "Product not found"}), 404
+
+        try:
+            # Get the updated fields from the request body
+            updated_fields = request.get_json()
+
+            if not isinstance(updated_fields, list):
+                return jsonify({"error": "Request body must be an array of fields"}), 400
+
+            # Get current product data
+            current_product = products[barcode]
+
+            # Update only the editable fields
+            for updated_field in updated_fields:
+                field_name = updated_field.get('fieldName')
+                new_value = updated_field.get('value')
+
+                # Find the field in the current product and update it
+                for field in current_product:
+                    if field['fieldName'] == field_name:
+                        # Check if the field is editable
+                        if field.get('editable') == 'true':
+                            field['value'] = new_value
+                        break
+
+            # Save the updated product to database
+            database.save_product(barcode, tenant_id, current_product)
+
+            app.logger.info(f"Updated product {barcode} for tenant {tenant_id}")
+            return jsonify({"success": True}), 200
+
+        except Exception as e:
+            app.logger.error(f"Error updating product: {str(e)}")
+            return jsonify({"error": "Failed to update product"}), 500
+
+    # Helper function to convert relative image paths to absolute URLs and filter fields
+    def filter_and_process_fields(product_fields):
+        # Filter to only include fields defined in custom AR fields
+        filtered_fields = []
+
+        # Get field types for all custom fields
+        field_types = {f['fieldName']: f['fieldType'] for f in custom_fields}
+
         for field in product_fields:
-            if field['fieldName'] == '_image' and field['value']:
-                # If it's already an absolute URL, leave it as is
-                if not field['value'].startswith('http'):
-                    # Build absolute URL using request host with tenant
-                    field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
-        return product_fields
-    
+            if field['fieldName'] in custom_field_names:
+                # Create absolute URL for IMAGE_URI fields
+                if field_types.get(field['fieldName']) == 'IMAGE_URI' and field['value']:
+                    # If it's already an absolute URL, leave it as is
+                    if not field['value'].startswith('http'):
+                        # Build absolute URL using request host with tenant
+                        field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
+                filtered_fields.append(field)
+        return filtered_fields
+
+    # Handle GET request - return product data
     # If barcode is provided, return specific product
     if barcode:
         if barcode in products:
-            product_data = make_absolute_urls(products[barcode])
+            product_data = filter_and_process_fields(products[barcode])
             response = jsonify(product_data)
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response, 200
         return jsonify({"error": "Product not found"}), 404
-    
+
     # Return all products if no barcode specified
-    # Convert all products to have absolute URLs
+    # Convert all products to have absolute URLs and filter fields
     all_products = {}
     for product_id, fields in products.items():
-        all_products[product_id] = make_absolute_urls(fields)
+        all_products[product_id] = filter_and_process_fields(fields)
     response = jsonify(all_products)
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
@@ -123,7 +258,26 @@ def serve_image(tenant_id, filename):
     # Log the request for debugging
     app.logger.info(f"Image requested for tenant {tenant_id}: {filename}")
     
-    # Extract product ID from filename (e.g., "123456.jpg" -> "123456")
+    # Check if filename contains field name (e.g., "123456_thumbnail.jpg")
+    base_name = os.path.splitext(filename)[0]
+    
+    if '_' in base_name:
+        # Split to get product_id and field_name
+        parts = base_name.split('_', 1)
+        product_id = parts[0]
+        field_name = '_' + parts[1] if len(parts) > 1 else '_image'
+        
+        # Try to get field-specific image
+        image_data = database.get_product_image_by_field(product_id, tenant_id, field_name)
+        if image_data:
+            image_bytes, mime_type = image_data
+            response = Response(image_bytes, mimetype=mime_type)
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+            app.logger.info(f"Serving field-specific image: {product_id}/{field_name} ({len(image_bytes)} bytes)")
+            return response
+    
+    # Try standard image lookup (backward compatibility)
     product_id = os.path.splitext(filename)[0]
     
     # Get image from database for this tenant
@@ -147,6 +301,50 @@ def serve_image(tenant_id, filename):
     
     app.logger.warning(f"Image not found: {filename}")
     return jsonify({"error": "Image not found"}), 404
+
+@app.route('/<tenant:tenant_id>/qrcode/template', methods=['GET'])
+def generate_template_qr_code(tenant_id):
+    """Generate QR code for the AR Template URL"""
+    try:
+        # Get server URL from settings
+        server_url = database.get_server_url()
+        template_url = f"{server_url}/{tenant_id}/"
+
+        # Generate QR code
+        buffer = BytesIO()
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(template_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        return Response(buffer.getvalue(), mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"QR code generation error: {str(e)}")
+        return jsonify({"error": "Failed to generate QR code"}), 500
+
+@app.route('/<tenant:tenant_id>/qrcode/arinfo', methods=['GET'])
+def generate_ar_qr_code(tenant_id):
+    """Generate QR code for the AR API endpoint"""
+    try:
+        # Get server URL from settings
+        server_url = database.get_server_url()
+        ar_url = f"{server_url}/{tenant_id}/arinfo"
+
+        # Generate QR code
+        buffer = BytesIO()
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(ar_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        return Response(buffer.getvalue(), mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"QR code generation error: {str(e)}")
+        return jsonify({"error": "Failed to generate QR code"}), 500
 
 @app.route('/<tenant:tenant_id>/barcodes/<path:filename>', methods=['GET'])
 def serve_barcode(tenant_id, filename):
@@ -200,20 +398,17 @@ def serve_barcode(tenant_id, filename):
         app.logger.error(f"Barcode generation error: {str(e)}")
         return jsonify({"error": "Failed to generate barcode"}), 500
 
-# Import the admin routes directly and register them with tenant support
-from routes.admin import (index as admin_index, add_product, edit_product, 
-                         delete_product, view_product, generate_barcode, 
-                         generate_barcode_page, manage_credentials)
+# Import product management routes
+from routes.admin import (add_product, edit_product, delete_product,
+                         generate_barcode, manage_ar_fields, view_all_barcodes)
 
-# Register admin routes with tenant prefix
-app.add_url_rule('/<tenant:tenant_id>/admin/', 'admin.index', admin_index)
-app.add_url_rule('/<tenant:tenant_id>/admin/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/view/<product_id>', 'admin.view_product', view_product)
-app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
-app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
-app.add_url_rule('/<tenant:tenant_id>/admin/credentials', 'admin.manage_credentials', manage_credentials, methods=['GET', 'POST'])
+# Register product management routes (remove /admin/ from paths)
+app.add_url_rule('/<tenant:tenant_id>/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
+app.add_url_rule('/<tenant:tenant_id>/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
+app.add_url_rule('/<tenant:tenant_id>/ar_fields', 'admin.manage_ar_fields', manage_ar_fields, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/barcodes', 'admin.view_all_barcodes', view_all_barcodes, methods=['GET'])
 
 # Register API routes with tenant prefix
 from routes.api import api_index
