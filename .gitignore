@@ -6,3 +6,10 @@ __pycache__/
 *.pyo
 *.pyd
 .claude/
+
+# Environment variables
+.env
+.env.local
+
+# Flask session files
+flask_session/

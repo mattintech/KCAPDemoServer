@@ -1,9 +1,11 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app, session
 from . import admin_bp
-from app.models import TenantModel, ProductModel, ARFieldModel
+from app.models import TenantModel, ProductModel, ARFieldModel, UserModel
 from app.services import ProductService
+from app.decorators.auth import tenant_access_required
 
 @admin_bp.route('/add', methods=['GET', 'POST'])
+@tenant_access_required
 def add_product(tenant_id):
     """Add a new product"""
     custom_fields = ARFieldModel.get_all(tenant_id)
@@ -128,12 +130,18 @@ def add_product(tenant_id):
         for img in images_to_save:
             ProductModel.save_image(product_id, tenant_id, img['field_name'], img['data'], img['mime_type'])
 
+        # Associate the tenant with the user if not already associated
+        user_id = session['user']['id']
+        if not UserModel.has_access_to_tenant(user_id, tenant_id):
+            UserModel.add_tenant(user_id, tenant_id)
+
         flash('Product added successfully!')
         return redirect(f'/{tenant_id}/')
 
     return render_template('admin/add_product.html', tenant_id=tenant_id, custom_fields=custom_fields)
 
 @admin_bp.route('/edit/<product_id>', methods=['GET', 'POST'])
+@tenant_access_required
 def edit_product(tenant_id, product_id):
     """Edit an existing product"""
     products = ProductModel.get_all(tenant_id)
@@ -253,6 +261,7 @@ def edit_product(tenant_id, product_id):
                          custom_fields=custom_fields)
 
 @admin_bp.route('/delete/<product_id>', methods=['POST'])
+@tenant_access_required
 def delete_product(tenant_id, product_id):
     """Delete a product"""
     products = ProductModel.get_all(tenant_id)
@@ -266,6 +275,7 @@ def delete_product(tenant_id, product_id):
     return redirect(f'/{tenant_id}/')
 
 @admin_bp.route('/generate_barcode/<product_id>/<code_type>')
+@tenant_access_required
 def generate_barcode(tenant_id, product_id, code_type):
     """Redirect to the main barcode generation endpoint"""
     products = ProductModel.get_all(tenant_id)
@@ -282,6 +292,7 @@ def generate_barcode(tenant_id, product_id, code_type):
     return redirect(f'/{tenant_id}/barcodes/{product_id}_{barcode_type}.png')
 
 @admin_bp.route('/barcodes', methods=['GET'])
+@tenant_access_required
 def view_all_barcodes(tenant_id):
     """Display all product barcodes for printing"""
     products = ProductModel.get_all(tenant_id)
@@ -295,6 +306,7 @@ def view_all_barcodes(tenant_id):
                          barcode_type=barcode_type)
 
 @admin_bp.route('/ar_fields', methods=['GET', 'POST'])
+@tenant_access_required
 def manage_ar_fields(tenant_id):
     """Manage custom AR content fields"""
     tenant = TenantModel.get_or_create(tenant_id)
