@@ -38,7 +38,8 @@ def save_products(products):
 def index(tenant_id):
     products = load_products(tenant_id)
     tenant = database.get_or_create_tenant(tenant_id)
-    return render_template('admin/index.html', products=products, tenant=tenant)
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+    return render_template('admin/index.html', products=products, tenant=tenant, custom_fields=custom_fields)
 
 def add_product(tenant_id):
     # Get custom AR fields for this tenant
@@ -172,26 +173,26 @@ def add_product(tenant_id):
             database.save_product_image(product_id, tenant_id, img['field_name'], img['data'], img['mime_type'])
         
         flash('Product added successfully!')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
+        return redirect(f'/{tenant_id}/')
     
     return render_template('admin/add_product.html', tenant_id=tenant_id, custom_fields=custom_fields)
 
 def edit_product(tenant_id, product_id):
     products = load_products(tenant_id)
     custom_fields = database.get_custom_ar_fields(tenant_id)
-    
+
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
+        return redirect(f'/{tenant_id}/')
     
     if request.method == 'POST':
         # Handle backward compatibility image upload
         image_data = None
         image_mime_type = None
-        
+
         # Process images after product is saved
         images_to_save = []
-        
+
         # Update fields based on form data
         updated_product = []
         
@@ -295,7 +296,7 @@ def edit_product(tenant_id, product_id):
             database.save_product_image(product_id, tenant_id, img['field_name'], img['data'], img['mime_type'])
         
         flash('Product updated successfully!')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
+        return redirect(f'/{tenant_id}/')
     
     return render_template('admin/edit_product.html', 
                          product_id=product_id, 
@@ -305,24 +306,24 @@ def edit_product(tenant_id, product_id):
 
 def delete_product(tenant_id, product_id):
     products = load_products(tenant_id)
-    
+
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
-    
+        return redirect(f'/{tenant_id}/')
+
     # Delete product from database (image is stored in DB)
     database.delete_product(product_id, tenant_id)
-    
+
     flash('Product deleted successfully!')
-    return redirect(url_for('admin.index', tenant_id=tenant_id))
+    return redirect(f'/{tenant_id}/')
 
 def view_product(tenant_id, product_id):
     products = load_products(tenant_id)
-    
+
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
-    
+        return redirect(f'/{tenant_id}/')
+
     return render_template('admin/view_product.html', product_id=product_id, product=products[product_id], tenant_id=tenant_id)
 
 def generate_barcode(tenant_id, product_id, code_type):
@@ -346,10 +347,10 @@ def generate_barcode(tenant_id, product_id, code_type):
 def generate_barcode_page(tenant_id, product_id):
     """Show a page with different barcode options for a product"""
     products = load_products(tenant_id)
-    
+
     if product_id not in products:
         flash('Product not found.')
-        return redirect(url_for('admin.index', tenant_id=tenant_id))
+        return redirect(f'/{tenant_id}/')
     
     # Extract product data
     product_data = {}
@@ -388,7 +389,7 @@ def manage_credentials(tenant_id):
         if username and password:
             database.update_tenant_credentials(tenant_id, username, password)
             flash('Credentials updated successfully!')
-            return redirect(url_for('admin.index', tenant_id=tenant_id))
+            return redirect(f'/{tenant_id}/')
         else:
             flash('Username and password are required.')
     

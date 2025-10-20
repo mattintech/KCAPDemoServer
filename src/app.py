@@ -70,11 +70,12 @@ def tenant_index(tenant_id):
     if tenant is None:
         # Reserved tenant ID or invalid
         return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
-    
+
     # Load products for this tenant
     products = load_products(tenant_id)
-    
-    return render_template('index.html', tenant=tenant, products=products)
+    custom_fields = database.get_custom_ar_fields(tenant_id)
+
+    return render_template('index.html', tenant=tenant, products=products, custom_fields=custom_fields)
 
 @app.route('/<tenant:tenant_id>/settings')
 def tenant_settings(tenant_id):
@@ -292,21 +293,16 @@ def serve_barcode(tenant_id, filename):
         app.logger.error(f"Barcode generation error: {str(e)}")
         return jsonify({"error": "Failed to generate barcode"}), 500
 
-# Import the admin routes directly and register them with tenant support
-from routes.admin import (index as admin_index, add_product, edit_product, 
-                         delete_product, view_product, generate_barcode, 
-                         generate_barcode_page, manage_credentials, manage_ar_fields)
+# Import product management routes
+from routes.admin import (add_product, edit_product, delete_product,
+                         generate_barcode, generate_barcode_page)
 
-# Register admin routes with tenant prefix
-app.add_url_rule('/<tenant:tenant_id>/admin/', 'admin.index', admin_index)
-app.add_url_rule('/<tenant:tenant_id>/admin/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/view/<product_id>', 'admin.view_product', view_product)
-app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
-app.add_url_rule('/<tenant:tenant_id>/admin/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
-app.add_url_rule('/<tenant:tenant_id>/admin/credentials', 'admin.manage_credentials', manage_credentials, methods=['GET', 'POST'])
-app.add_url_rule('/<tenant:tenant_id>/admin/ar_fields', 'admin.manage_ar_fields', manage_ar_fields, methods=['GET', 'POST'])
+# Register product management routes (remove /admin/ from paths)
+app.add_url_rule('/<tenant:tenant_id>/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/edit/<product_id>', 'admin.edit_product', edit_product, methods=['GET', 'POST'])
+app.add_url_rule('/<tenant:tenant_id>/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
+app.add_url_rule('/<tenant:tenant_id>/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
+app.add_url_rule('/<tenant:tenant_id>/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
 
 # Register API routes with tenant prefix
 from routes.api import api_index

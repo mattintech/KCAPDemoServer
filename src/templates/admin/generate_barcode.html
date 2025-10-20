@@ -8,7 +8,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h2>Generate Barcodes for Product: {{ product_id }}</h2>
-                <a href="{{ url_for('admin.index', tenant_id=tenant_id) }}" class="btn btn-outline-secondary">Back to Products</a>
+                <a href="/{{ tenant_id }}/" class="btn btn-outline-secondary">Back to Products</a>
             </div>
             <div class="card-body">
                 {% if not dependencies.qrcode or not dependencies.barcode or not dependencies.pillow %}

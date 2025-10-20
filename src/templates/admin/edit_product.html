@@ -10,7 +10,7 @@
                 <h2>Edit Product</h2>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('admin.edit_product', tenant_id=tenant_id, product_id=product_id) }}" method="POST" enctype="multipart/form-data">
+                <form action="/{{ tenant_id }}/edit/{{ product_id }}" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="product_id" class="form-label">Product ID</label>
                         <input type="text" class="form-control" id="product_id" value="{{ product_id }}" disabled>
@@ -21,14 +21,11 @@
                         {% if field.fieldName != '_id' %}
                         <div class="mb-3">
                             <label for="field_{{ field.fieldName }}" class="form-label">{{ field.label }}</label>
-                            
-                            {% set current_value = '' %}
-                            {% for prod_field in product %}
-                                {% if prod_field.fieldName == field.fieldName %}
-                                    {% set current_value = prod_field.value %}
-                                {% endif %}
-                            {% endfor %}
-                            
+
+                            {# Find current value using selectattr filter #}
+                            {% set matching_fields = product|selectattr('fieldName', 'equalto', field.fieldName)|list %}
+                            {% set current_value = matching_fields[0].value if matching_fields else '' %}
+
                             {% if field.fieldType == 'IMAGE_URI' %}
                                 <input type="file" class="form-control" id="image_{{ field.fieldName }}" name="image_{{ field.fieldName }}" accept="image/*" onchange="previewImage(this, 'preview_new_{{ field.fieldName }}')">
                                 <div class="form-text">Leave empty to keep the current image.</div>
@@ -93,7 +90,7 @@
                     {% endif %}
                     
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('admin.index', tenant_id=tenant_id) }}" class="btn btn-secondary">Cancel</a>
+                        <a href="/{{ tenant_id }}/" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">Update Product</button>
                     </div>
                 </form>

@@ -22,46 +22,44 @@
         <table class="table table-striped table-bordered align-middle">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 15%">Product ID</th>
-                    <th style="width: 25%">Name</th>
-                    <th style="width: 10%">Price</th>
-                    <th style="width: 20%">Image</th>
-                    <th style="width: 30%">Actions</th>
+                    <th>Product ID</th>
+                    {% for custom_field in custom_fields %}
+                        {% if custom_field.fieldName != '_id' %}
+                            <th>{{ custom_field.label }}</th>
+                        {% endif %}
+                    {% endfor %}
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for product_id, product_data in products.items() %}
                 <tr>
                     <td>{{ product_id }}</td>
-                    <td>
-                        {% for field in product_data %}
-                            {% if field.fieldName == '_name' %}
-                                {{ field.value }}
-                            {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {% for field in product_data %}
-                            {% if field.fieldName == '_price' %}
-                                {{ field.value }}
-                            {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {% for field in product_data %}
-                            {% if field.fieldName == '_image' %}
-                                <div class="product-image-container">
-                                    <img src="{{ field.value }}" alt="Product image" class="product-image">
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </td>
+                    {% for custom_field in custom_fields %}
+                        {% if custom_field.fieldName != '_id' %}
+                            <td>
+                                {% for field in product_data %}
+                                    {% if field.fieldName == custom_field.fieldName %}
+                                        {% if custom_field.fieldType == 'IMAGE_URI' %}
+                                            {% if field.value %}
+                                                <div class="product-image-container">
+                                                    <img src="{{ field.value }}" alt="{{ custom_field.label }}" class="product-image">
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            {{ field.value }}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        {% endif %}
+                    {% endfor %}
                     <td>
                         <div class="d-flex justify-content-center gap-2">
                             <a href="{{ url_for('admin.edit_product', tenant_id=tenant.id, product_id=product_id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                             <a href="{{ url_for('admin.generate_barcode_page', tenant_id=tenant.id, product_id=product_id) }}" class="btn btn-sm btn-outline-success">Barcodes</a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" 
-                                    data-bs-toggle="modal" data-bs-target="#deleteModal" 
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal"
                                     data-product-id="{{ product_id }}"
                                     data-product-name="{% for field in product_data %}{% if field.fieldName == '_name' %}{{ field.value }}{% endif %}{% endfor %}">
                                 Delete
