@@ -519,7 +519,7 @@ def get_custom_ar_fields(tenant_id: str) -> List[Dict[str, Any]]:
                 'editable': row['editable'],
                 'displayOrder': row['display_order']
             })
-        
+
         return fields
 
 def save_custom_ar_field(tenant_id: str, field_data: Dict[str, Any]) -> int:
