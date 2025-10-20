@@ -146,23 +146,64 @@ def get_ar_content_fields(tenant_id):
     fields = database.get_custom_ar_fields(tenant_id)
     return jsonify(fields), 200
 
-@app.route('/<tenant:tenant_id>/arinfo', methods=['GET'])
+@app.route('/<tenant:tenant_id>/arinfo', methods=['GET', 'POST'])
 def get_ar_info(tenant_id):
     barcode = request.args.get('barcode')
     products = load_products(tenant_id)
-    
+
     # Get custom AR fields for this tenant
     custom_fields = database.get_custom_ar_fields(tenant_id)
     custom_field_names = [f['fieldName'] for f in custom_fields]
-    
+
+    # Handle POST request - update product fields
+    if request.method == 'POST':
+        if not barcode:
+            return jsonify({"error": "Barcode parameter required"}), 400
+
+        if barcode not in products:
+            return jsonify({"error": "Product not found"}), 404
+
+        try:
+            # Get the updated fields from the request body
+            updated_fields = request.get_json()
+
+            if not isinstance(updated_fields, list):
+                return jsonify({"error": "Request body must be an array of fields"}), 400
+
+            # Get current product data
+            current_product = products[barcode]
+
+            # Update only the editable fields
+            for updated_field in updated_fields:
+                field_name = updated_field.get('fieldName')
+                new_value = updated_field.get('value')
+
+                # Find the field in the current product and update it
+                for field in current_product:
+                    if field['fieldName'] == field_name:
+                        # Check if the field is editable
+                        if field.get('editable') == 'true':
+                            field['value'] = new_value
+                        break
+
+            # Save the updated product to database
+            database.save_product(barcode, tenant_id, current_product)
+
+            app.logger.info(f"Updated product {barcode} for tenant {tenant_id}")
+            return jsonify({"success": True}), 200
+
+        except Exception as e:
+            app.logger.error(f"Error updating product: {str(e)}")
+            return jsonify({"error": "Failed to update product"}), 500
+
     # Helper function to convert relative image paths to absolute URLs and filter fields
     def filter_and_process_fields(product_fields):
         # Filter to only include fields defined in custom AR fields
         filtered_fields = []
-        
+
         # Get field types for all custom fields
         field_types = {f['fieldName']: f['fieldType'] for f in custom_fields}
-        
+
         for field in product_fields:
             if field['fieldName'] in custom_field_names:
                 # Create absolute URL for IMAGE_URI fields
@@ -173,7 +214,8 @@ def get_ar_info(tenant_id):
                         field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
                 filtered_fields.append(field)
         return filtered_fields
-    
+
+    # Handle GET request - return product data
     # If barcode is provided, return specific product
     if barcode:
         if barcode in products:
@@ -182,7 +224,7 @@ def get_ar_info(tenant_id):
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response, 200
         return jsonify({"error": "Product not found"}), 404
-    
+
     # Return all products if no barcode specified
     # Convert all products to have absolute URLs and filter fields
     all_products = {}
@@ -240,6 +282,50 @@ def serve_image(tenant_id, filename):
     
     app.logger.warning(f"Image not found: {filename}")
     return jsonify({"error": "Image not found"}), 404
+
+@app.route('/<tenant:tenant_id>/qrcode/template', methods=['GET'])
+def generate_template_qr_code(tenant_id):
+    """Generate QR code for the AR Template URL"""
+    try:
+        # Get server URL from settings
+        server_url = database.get_server_url()
+        template_url = f"{server_url}/{tenant_id}/"
+
+        # Generate QR code
+        buffer = BytesIO()
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(template_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        return Response(buffer.getvalue(), mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"QR code generation error: {str(e)}")
+        return jsonify({"error": "Failed to generate QR code"}), 500
+
+@app.route('/<tenant:tenant_id>/qrcode/arinfo', methods=['GET'])
+def generate_ar_qr_code(tenant_id):
+    """Generate QR code for the AR API endpoint"""
+    try:
+        # Get server URL from settings
+        server_url = database.get_server_url()
+        ar_url = f"{server_url}/{tenant_id}/arinfo"
+
+        # Generate QR code
+        buffer = BytesIO()
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(ar_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        return Response(buffer.getvalue(), mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"QR code generation error: {str(e)}")
+        return jsonify({"error": "Failed to generate QR code"}), 500
 
 @app.route('/<tenant:tenant_id>/barcodes/<path:filename>', methods=['GET'])
 def serve_barcode(tenant_id, filename):

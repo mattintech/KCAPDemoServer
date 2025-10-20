@@ -90,13 +90,40 @@
                             <dd class="col-sm-9">{{ tenant.name }}</dd>
                             
                             <dt class="col-sm-3">API Endpoint:</dt>
-                            <dd class="col-sm-9"><code>{{ server_url }}/{{ tenant.id }}/arinfo</code></dd>
+                            <dd class="col-sm-9">
+                                <code>{{ server_url }}/{{ tenant.id }}/arinfo</code>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#qrModal">
+                                    <i class="bi bi-qr-code"></i> QR Code
+                                </button>
+                            </dd>
                             
                             <dt class="col-sm-3">Created:</dt>
                             <dd class="col-sm-9">{{ tenant.created_at }}</dd>
                         </dl>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrModalLabel">API Endpoint QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-muted mb-3">Scan this QR code to access the AR API endpoint:</p>
+                <div class="mb-3">
+                    <img src="/{{ tenant.id }}/qrcode/arinfo" alt="AR API QR Code" class="img-fluid" style="max-width: 300px;">
+                </div>
+                <code class="d-block mt-2">{{ server_url }}/{{ tenant.id }}/arinfo</code>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
