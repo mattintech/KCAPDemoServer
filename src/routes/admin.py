@@ -316,18 +316,31 @@ def generate_barcode(tenant_id, product_id, code_type):
     products = load_products(tenant_id)
     if product_id not in products:
         return jsonify({"error": "Product not found"}), 404
-    
+
     # Map code_type to the expected format for the main endpoint
     type_mapping = {
         'qrcode': 'qr',
         'ean13': 'ean13',
         'code128': 'code128'
     }
-    
+
     barcode_type = type_mapping.get(code_type, code_type)
-    
+
     # Redirect to the main barcode endpoint which generates dynamically
     return redirect(f'/{tenant_id}/barcodes/{product_id}_{barcode_type}.png')
+
+def view_all_barcodes(tenant_id):
+    """Display all product barcodes for printing"""
+    products = load_products(tenant_id)
+    tenant = database.get_or_create_tenant(tenant_id)
+
+    # Get barcode type setting for this tenant
+    barcode_type = tenant.get('barcode_type', 'qr')
+
+    return render_template('admin/all_barcodes.html',
+                         products=products,
+                         tenant=tenant,
+                         barcode_type=barcode_type)
 
 def manage_credentials(tenant_id):
     """Manage tenant login credentials"""

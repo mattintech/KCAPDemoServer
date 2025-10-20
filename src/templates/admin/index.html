@@ -10,6 +10,9 @@
             <div class="mt-2">
                 <a href="{{ url_for('admin.manage_credentials', tenant_id=tenant.id) }}" class="btn btn-sm btn-secondary">Manage Credentials</a>
                 <a href="{{ url_for('admin.manage_ar_fields', tenant_id=tenant.id) }}" class="btn btn-sm btn-secondary">Manage AR Fields</a>
+                <a href="{{ url_for('admin.view_all_barcodes', tenant_id=tenant.id) }}" class="btn btn-sm btn-success">
+                    <i class="bi bi-upc-scan"></i> View All Barcodes
+                </a>
                 <a href="/" class="btn btn-sm btn-outline-secondary">Switch Tenant</a>
             </div>
         </div>
