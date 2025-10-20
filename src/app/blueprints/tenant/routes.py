@@ -1,10 +1,12 @@
-from flask import render_template, request, redirect, flash, jsonify, Response, current_app
+from flask import render_template, request, redirect, flash, jsonify, Response, current_app, session
 from . import tenant_bp
-from app.models import TenantModel, ProductModel, ARFieldModel, SettingsModel
+from app.models import TenantModel, ProductModel, ARFieldModel, SettingsModel, UserModel
 from app.services import AuthService, ProductService, BarcodeService
+from app.decorators.auth import tenant_access_required
 import os
 
 @tenant_bp.route('/')
+@tenant_access_required
 def index(tenant_id):
     """Tenant home page - product listing"""
     tenant = TenantModel.get_or_create(tenant_id)
@@ -17,13 +19,19 @@ def index(tenant_id):
     return render_template('index.html', tenant=tenant, products=products, custom_fields=custom_fields)
 
 @tenant_bp.route('/delete', methods=['POST'])
+@tenant_access_required
 def delete_tenant(tenant_id):
     """Delete a tenant and all its data"""
+    # Also remove the user's association with this tenant
+    user_id = session['user']['id']
+    UserModel.remove_tenant(user_id, tenant_id)
+
     TenantModel.delete(tenant_id)
     flash(f'Tenant "{tenant_id}" has been deleted successfully.', 'success')
     return redirect('/')
 
 @tenant_bp.route('/settings')
+@tenant_access_required
 def settings(tenant_id):
     """Tenant settings page"""
     tenant = TenantModel.get_or_create(tenant_id)
@@ -36,6 +44,7 @@ def settings(tenant_id):
     return render_template('tenant_settings.html', tenant=tenant, custom_fields=custom_fields, server_url=server_url)
 
 @tenant_bp.route('/settings/credentials', methods=['POST'])
+@tenant_access_required
 def update_credentials(tenant_id):
     """Update tenant credentials"""
     tenant = TenantModel.get_by_id(tenant_id)
@@ -54,6 +63,7 @@ def update_credentials(tenant_id):
     return redirect(f'/{tenant_id}/settings')
 
 @tenant_bp.route('/settings/barcode', methods=['POST'])
+@tenant_access_required
 def update_barcode_type(tenant_id):
     """Update tenant barcode type"""
     tenant = TenantModel.get_by_id(tenant_id)

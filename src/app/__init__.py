@@ -1,5 +1,6 @@
 import os
 from flask import Flask, redirect
+from flask_session import Session
 from werkzeug.routing import BaseConverter
 
 def create_app(config_name='development'):
@@ -12,6 +13,10 @@ def create_app(config_name='development'):
 
     # Ensure data folder exists
     os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+
+    # Initialize Flask-Session for server-side sessions
+    Session(app)
 
     # Custom converter for tenant IDs
     class TenantConverter(BaseConverter):
@@ -30,11 +35,17 @@ def create_app(config_name='development'):
     # Initialize database
     with app.app_context():
         from app.models.base import init_database
+        from app.models.user import UserModel
+
         init_database()
+        # Create user tables
+        UserModel.create_table()
 
     # Register blueprints
     from app.blueprints import main_bp, tenant_bp, admin_bp, api_bp
+    from app.blueprints.auth import auth_bp
 
+    app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(tenant_bp)
     app.register_blueprint(admin_bp)
