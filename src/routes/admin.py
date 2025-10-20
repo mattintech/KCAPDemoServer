@@ -110,8 +110,9 @@ def add_product(tenant_id):
                             'mime_type': mime_type
                         })
                         
-                        # Set the image URL path
-                        image_path = f"/images/{product_id}_{field_name}.{extension}"
+                        # Set the image URL path (strip leading underscore from field_name to avoid double underscores)
+                        field_suffix = field_name[1:] if field_name.startswith('_') else field_name
+                        image_path = f"/images/{product_id}_{field_suffix}.{extension}"
                         
                         # For backward compatibility with _image field
                         if field_name == '_image':
@@ -231,7 +232,7 @@ def edit_product(tenant_id, product_id):
                         # Read image data
                         file.seek(0)
                         img_data = file.read()
-                        
+
                         # Determine mime type
                         extension = file.filename.rsplit('.', 1)[1].lower()
                         mime_types = {
@@ -241,21 +242,23 @@ def edit_product(tenant_id, product_id):
                             'gif': 'image/gif'
                         }
                         mime_type = mime_types.get(extension, 'image/jpeg')
-                        
+
                         # Store for later saving
                         images_to_save.append({
                             'field_name': field_name,
                             'data': img_data,
                             'mime_type': mime_type
                         })
-                        
-                        # Update image path
-                        existing_field["value"] = f"/images/{product_id}_{field_name}.{extension}"
-                        
+
+                        # Update image path (strip leading underscore from field_name to avoid double underscores)
+                        field_suffix = field_name[1:] if field_name.startswith('_') else field_name
+                        existing_field["value"] = f"/images/{product_id}_{field_suffix}.{extension}"
+
                         # For backward compatibility with _image field
                         if field_name == '_image':
                             image_data = img_data
                             image_mime_type = mime_type
+                # If no new image uploaded, keep the existing value (already in existing_field)
             else:
                 # Get value from form
                 value = request.form.get(f'field_{field_name}', '')
