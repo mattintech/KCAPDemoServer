@@ -295,7 +295,7 @@ def serve_barcode(tenant_id, filename):
 
 # Import product management routes
 from routes.admin import (add_product, edit_product, delete_product,
-                         generate_barcode, generate_barcode_page)
+                         generate_barcode, generate_barcode_page, manage_ar_fields)
 
 # Register product management routes (remove /admin/ from paths)
 app.add_url_rule('/<tenant:tenant_id>/add', 'admin.add_product', add_product, methods=['GET', 'POST'])
@@ -303,6 +303,7 @@ app.add_url_rule('/<tenant:tenant_id>/edit/<product_id>', 'admin.edit_product', 
 app.add_url_rule('/<tenant:tenant_id>/delete/<product_id>', 'admin.delete_product', delete_product, methods=['POST'])
 app.add_url_rule('/<tenant:tenant_id>/generate_barcode/<product_id>/<code_type>', 'admin.generate_barcode', generate_barcode)
 app.add_url_rule('/<tenant:tenant_id>/generate_barcode_page/<product_id>', 'admin.generate_barcode_page', generate_barcode_page)
+app.add_url_rule('/<tenant:tenant_id>/ar_fields', 'admin.manage_ar_fields', manage_ar_fields, methods=['GET', 'POST'])
 
 # Register API routes with tenant prefix
 from routes.api import api_index

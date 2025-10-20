@@ -43,7 +43,7 @@
                                         {% if custom_field.fieldType == 'IMAGE_URI' %}
                                             {% if field.value %}
                                                 <div class="product-image-container">
-                                                    <img src="{{ field.value }}" alt="{{ custom_field.label }}" class="product-image">
+                                                    <img src="/{{ tenant.id }}{{ field.value }}" alt="{{ custom_field.label }}" class="product-image">
                                                 </div>
                                             {% endif %}
                                         {% else %}

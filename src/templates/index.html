@@ -30,7 +30,7 @@
                             <tr>
                                 <th>Product ID</th>
                                 {% for custom_field in custom_fields %}
-                                    {% if custom_field.fieldName != '_id' and custom_field.fieldType != 'IMAGE_URI' %}
+                                    {% if custom_field.fieldName != '_id' %}
                                         <th>{{ custom_field.label }}</th>
                                     {% endif %}
                                 {% endfor %}
@@ -42,10 +42,18 @@
                             <tr>
                                 <td>{{ product_id }}</td>
                                 {% for custom_field in custom_fields %}
-                                    {% if custom_field.fieldName != '_id' and custom_field.fieldType != 'IMAGE_URI' %}
+                                    {% if custom_field.fieldName != '_id' %}
                                         <td>
                                             {% set matching_fields = product_data|selectattr('fieldName', 'equalto', custom_field.fieldName)|list %}
-                                            {{ matching_fields[0].value if matching_fields else '' }}
+                                            {% if custom_field.fieldType == 'IMAGE_URI' %}
+                                                {% if matching_fields and matching_fields[0].value %}
+                                                    <div class="product-image-container">
+                                                        <img src="/{{ tenant.id }}{{ matching_fields[0].value }}" alt="{{ custom_field.label }}" class="product-image">
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                {{ matching_fields[0].value if matching_fields else '' }}
+                                            {% endif %}
                                         </td>
                                     {% endif %}
                                 {% endfor %}
