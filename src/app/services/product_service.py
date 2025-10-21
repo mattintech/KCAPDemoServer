@@ -1,5 +1,5 @@
 from typing import Dict, List, Any
-from app.models import ProductModel, ARFieldModel
+from app.models import ProductModel, ARFieldModel, SettingsModel
 from flask import request
 
 class ProductService:
@@ -20,8 +20,9 @@ class ProductService:
                 if field_types.get(field['fieldName']) == 'IMAGE_URI' and field['value']:
                     # If it's already an absolute URL, leave it as is
                     if not field['value'].startswith('http'):
-                        # Build absolute URL using request host with tenant
-                        field['value'] = f"{request.url_root.rstrip('/')}/{tenant_id}{field['value']}"
+                        # Build absolute URL using configured server URL
+                        server_url = SettingsModel.get_server_url()
+                        field['value'] = f"{server_url}/{tenant_id}{field['value']}"
                 filtered_fields.append(field)
 
         return filtered_fields
