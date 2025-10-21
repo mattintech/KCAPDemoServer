@@ -321,8 +321,8 @@ def manage_ar_fields(tenant_id):
 
         if action == 'add':
             field_data = {
-                'fieldName': request.form.get('fieldName'),
-                'label': request.form.get('label'),
+                'fieldName': request.form.get('fieldName', '').strip(),
+                'label': request.form.get('label', '').strip(),
                 'fieldType': request.form.get('fieldType'),
                 'editable': request.form.get('editable', 'true'),
                 'displayOrder': int(request.form.get('displayOrder', 0))
@@ -343,8 +343,8 @@ def manage_ar_fields(tenant_id):
         elif action == 'update':
             field_data = {
                 'id': int(request.form.get('field_id')),
-                'fieldName': request.form.get('fieldName'),
-                'label': request.form.get('label'),
+                'fieldName': request.form.get('fieldName', '').strip(),
+                'label': request.form.get('label', '').strip(),
                 'fieldType': request.form.get('fieldType'),
                 'editable': request.form.get('editable', 'true'),
                 'displayOrder': int(request.form.get('displayOrder', 0))

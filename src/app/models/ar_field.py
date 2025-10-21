@@ -36,6 +36,10 @@ class ARFieldModel:
         """Save or update a custom AR field"""
         tenant_id = tenant_id.lower()
 
+        # Strip whitespace from field name and label to prevent spacing issues
+        field_name = field_data['fieldName'].strip() if field_data.get('fieldName') else ''
+        label = field_data['label'].strip() if field_data.get('label') else ''
+
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -47,8 +51,8 @@ class ARFieldModel:
                         display_order = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ? AND tenant_id = ?
                 ''', (
-                    field_data['fieldName'],
-                    field_data['label'],
+                    field_name,
+                    label,
                     field_data['fieldType'],
                     field_data['editable'],
                     field_data['displayOrder'],
@@ -63,8 +67,8 @@ class ARFieldModel:
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (
                     tenant_id,
-                    field_data['fieldName'],
-                    field_data['label'],
+                    field_name,
+                    label,
                     field_data['fieldType'],
                     field_data['editable'],
                     field_data['displayOrder']
