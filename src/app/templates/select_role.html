@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+
+{% block title %}Select Role - KCAP Demo Server{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-selection-container {
+        max-width: 600px;
+        margin: 100px auto;
+    }
+    .role-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    .role-card:hover {
+        transform: translateY(-5px);
+        border-color: #0d6efd;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .role-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    .auth-mode-badge {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<span class="badge bg-warning text-dark auth-mode-badge">
+    <i class="bi bi-shield-lock"></i> No Auth Mode
+</span>
+
+<div class="role-selection-container">
+    <div class="text-center mb-4">
+        <h2>Welcome to KCAP Demo Server</h2>
+        <p class="text-muted">Select your role to continue</p>
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i> Running in no-auth mode for local testing
+        </small>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card role-card h-100 text-center" onclick="selectRole('admin')">
+                <div class="card-body p-4">
+                    <div class="role-icon text-danger">
+                        <i class="bi bi-shield-fill-check"></i>
+                    </div>
+                    <h4>Admin</h4>
+                    <p class="text-muted mb-0">
+                        Full access to all tenants, server settings, and user management
+                    </p>
+                    <ul class="list-unstyled text-start mt-3">
+                        <li><i class="bi bi-check-circle-fill text-success"></i> Manage all tenants</li>
+                        <li><i class="bi bi-check-circle-fill text-success"></i> Server settings</li>
+                        <li><i class="bi bi-check-circle-fill text-success"></i> User management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card role-card h-100 text-center" onclick="selectRole('user')">
+                <div class="card-body p-4">
+                    <div class="role-icon text-primary">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <h4>User</h4>
+                    <p class="text-muted mb-0">
+                        Access to assigned tenants only
+                    </p>
+                    <ul class="list-unstyled text-start mt-3">
+                        <li><i class="bi bi-check-circle-fill text-success"></i> Assigned tenants</li>
+                        <li><i class="bi bi-x-circle-fill text-danger"></i> Server settings</li>
+                        <li><i class="bi bi-x-circle-fill text-danger"></i> User management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-lightbulb"></i>
+        <strong>Testing Mode:</strong> This selection is temporary and only for local development.
+        To use Entra ID authentication, set <code>AUTH_MODE=entra</code> in your .env file.
+    </div>
+</div>
+
+<form id="roleForm" method="POST" action="{{ url_for('auth.select_role') }}" style="display: none;">
+    <input type="hidden" name="role" id="roleInput">
+</form>
+
+<script>
+function selectRole(role) {
+    document.getElementById('roleInput').value = role;
+    document.getElementById('roleForm').submit();
+}
+</script>
+{% endblock %}

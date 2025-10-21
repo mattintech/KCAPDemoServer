@@ -4,17 +4,36 @@ from flask import session, redirect, url_for, request, abort, current_app
 from app.models.user import UserModel
 
 
+def _ensure_no_auth_user():
+    """
+    Helper function to ensure a user exists in session when AUTH_MODE is 'none'.
+    If no user in session, redirect to role selection page.
+    """
+    if current_app.config.get('AUTH_MODE') == 'none' and 'user' not in session:
+        # Redirect to role selection page
+        session['next'] = request.url
+        return redirect(url_for('auth.select_role'))
+    return None
+
+
 def login_required(f):
     """
     Decorator to require user authentication.
     Redirects to login if user is not authenticated.
+    In 'none' auth mode, redirects to role selection if no session exists.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            # Store the requested URL to redirect back after login
+        # Check if we're in no-auth mode and need to set up a user
+        if current_app.config.get('AUTH_MODE') == 'none':
+            redirect_response = _ensure_no_auth_user()
+            if redirect_response:
+                return redirect_response
+        elif 'user' not in session:
+            # Entra ID mode - redirect to login
             session['next'] = request.url
             return redirect(url_for('auth.login'))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -26,7 +45,13 @@ def admin_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
+        # Check if we're in no-auth mode and need to set up a user
+        if current_app.config.get('AUTH_MODE') == 'none':
+            redirect_response = _ensure_no_auth_user()
+            if redirect_response:
+                return redirect_response
+        elif 'user' not in session:
+            # Entra ID mode - redirect to login
             session['next'] = request.url
             return redirect(url_for('auth.login'))
 
@@ -47,7 +72,13 @@ def tenant_access_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
+        # Check if we're in no-auth mode and need to set up a user
+        if current_app.config.get('AUTH_MODE') == 'none':
+            redirect_response = _ensure_no_auth_user()
+            if redirect_response:
+                return redirect_response
+        elif 'user' not in session:
+            # Entra ID mode - redirect to login
             session['next'] = request.url
             return redirect(url_for('auth.login'))
 
@@ -76,7 +107,13 @@ def settings_access_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
+        # Check if we're in no-auth mode and need to set up a user
+        if current_app.config.get('AUTH_MODE') == 'none':
+            redirect_response = _ensure_no_auth_user()
+            if redirect_response:
+                return redirect_response
+        elif 'user' not in session:
+            # Entra ID mode - redirect to login
             session['next'] = request.url
             return redirect(url_for('auth.login'))
 

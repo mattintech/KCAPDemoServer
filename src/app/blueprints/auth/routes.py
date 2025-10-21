@@ -1,14 +1,20 @@
-"""Authentication routes for Entra ID login/logout"""
+"""Authentication routes for Entra ID login/logout and no-auth mode"""
 import secrets
-from flask import session, redirect, url_for, request, current_app, render_template, flash
+from flask import session, redirect, url_for, request, current_app, render_template, flash, abort
 from . import auth_bp
-from app.services.msal_service import MSALService
 from app.models.user import UserModel
 
 
 @auth_bp.route('/login')
 def login():
-    """Initiate Entra ID login flow"""
+    """Initiate Entra ID login flow or redirect to role selection in no-auth mode"""
+    # Check if we're in no-auth mode
+    if current_app.config.get('AUTH_MODE') == 'none':
+        return redirect(url_for('auth.select_role'))
+
+    # Entra ID mode
+    from app.services.msal_service import MSALService
+
     # Generate state token for CSRF protection
     state = secrets.token_urlsafe(16)
     session['auth_state'] = state
@@ -23,9 +29,51 @@ def login():
     return redirect(auth_url)
 
 
+@auth_bp.route('/select-role', methods=['GET', 'POST'])
+def select_role():
+    """Role selection page for no-auth mode"""
+    # Only available in no-auth mode
+    if current_app.config.get('AUTH_MODE') != 'none':
+        current_app.logger.warning(f"Attempted to access role selection in {current_app.config.get('AUTH_MODE')} mode")
+        abort(403, description="Role selection is only available in no-auth mode")
+
+    if request.method == 'POST':
+        role = request.form.get('role', 'user')
+
+        # Validate role
+        if role not in ['admin', 'user']:
+            role = 'user'
+
+        # Create a mock user for testing
+        # Use a consistent ID based on role for session persistence
+        user_id = f"test-{role}-user"
+
+        # Store user in session
+        session['user'] = {
+            'id': user_id,
+            'email': f'{role}@test.local',
+            'name': f'Test {role.capitalize()}',
+            'role': role
+        }
+
+        current_app.logger.info(f"No-auth mode: User selected {role} role")
+
+        # Redirect to the originally requested page or home
+        next_url = session.pop('next', None)
+        if next_url:
+            return redirect(next_url)
+
+        return redirect(url_for('main.index'))
+
+    return render_template('select_role.html')
+
+
 @auth_bp.route('/callback')
 def callback():
     """Handle the callback from Entra ID after authentication"""
+    # Import MSAL service only when needed (Entra ID mode)
+    from app.services.msal_service import MSALService
+
     # Verify state to prevent CSRF
     state = request.args.get('state')
     if state != session.get('auth_state'):
@@ -103,6 +151,14 @@ def logout():
 
     # Clear session
     session.clear()
+
+    # Check if we're in no-auth mode
+    if current_app.config.get('AUTH_MODE') == 'none':
+        # Just redirect to home in no-auth mode
+        return redirect(url_for('main.index'))
+
+    # Entra ID mode - logout from Azure AD
+    from app.services.msal_service import MSALService
 
     # Remove from MSAL cache
     MSALService.remove_account()
