@@ -10,6 +10,11 @@ def add_product(tenant_id):
     """Add a new product"""
     custom_fields = ARFieldModel.get_all(tenant_id)
 
+    # Prevent adding products if no fields are configured
+    if not custom_fields:
+        flash('Cannot add products. Please configure AR fields first.', 'warning')
+        return redirect(url_for('admin.manage_ar_fields', tenant_id=tenant_id))
+
     if request.method == 'POST':
         product_id = request.form.get('product_id')
 

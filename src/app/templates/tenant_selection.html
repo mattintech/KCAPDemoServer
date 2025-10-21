@@ -160,6 +160,15 @@
                             <input type="text" class="form-control" id="tenantId" placeholder="e.g., demo-company" required pattern="[a-zA-Z0-9_-]+">
                             <small class="form-text text-muted">Only letters, numbers, hyphens, and underscores allowed</small>
                         </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="createDefaultFields" checked>
+                                <label class="form-check-label" for="createDefaultFields">
+                                    Create products with default fields
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">Adds: Product Name, Item ID, Sale Price, and Image fields</small>
+                        </div>
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i>
                             <small>Default credentials: <strong>admin</strong> / <strong>admin</strong></small>
@@ -237,13 +246,18 @@
         document.getElementById('newTenantForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const tenantId = document.getElementById('tenantId').value;
+            const createDefaults = document.getElementById('createDefaultFields').checked;
+
             if (tenantId) {
                 const normalizedId = tenantId.toLowerCase();
                 if (reservedIds.includes(normalizedId)) {
                     alert(`"${tenantId}" is a reserved name and cannot be used as a tenant ID.`);
                     return;
                 }
-                window.location.href = '/' + normalizedId + '/';
+
+                // Redirect with query parameter for default fields
+                const url = '/' + normalizedId + '/' + (createDefaults ? '?create_defaults=1' : '');
+                window.location.href = url;
             }
         });
 

@@ -16,6 +16,18 @@
             <hr class="my-4">
             
             <div class="mt-4">
+                {% if not custom_fields %}
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>No AR Fields Configured</h4>
+                    <p>Before you can add products, you need to configure custom AR fields that define what information is returned for each product.</p>
+                    <hr>
+                    <p class="mb-0">
+                        <a href="/{{ tenant.id }}/ar_fields" class="btn btn-primary">
+                            <i class="bi bi-gear-fill me-1"></i>Configure AR Fields
+                        </a>
+                    </p>
+                </div>
+                {% else %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2>Products</h2>
                     <div>
@@ -27,7 +39,7 @@
                         </a>
                     </div>
                 </div>
-                
+
                 {% if products %}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -90,6 +102,7 @@
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> No products available yet. Click "Add New Product" to get started.
                 </div>
+                {% endif %}
                 {% endif %}
             </div>
 

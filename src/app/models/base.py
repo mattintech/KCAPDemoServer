@@ -8,6 +8,8 @@ def get_db():
     db_path = current_app.config['DATABASE_PATH']
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    # Enable foreign key constraints
+    conn.execute('PRAGMA foreign_keys = ON')
     try:
         yield conn
     finally:
