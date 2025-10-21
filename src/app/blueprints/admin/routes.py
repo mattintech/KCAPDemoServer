@@ -108,29 +108,6 @@ def add_product(tenant_id):
                     "fieldType": field['fieldType']
                 })
 
-        # Handle backward compatibility fields
-        if '_name' not in [f['fieldName'] for f in custom_fields]:
-            name = request.form.get('name', '')
-            if name:
-                product_data.append({
-                    "fieldName": "_name",
-                    "label": "Product Name",
-                    "value": name,
-                    "editable": "true",
-                    "fieldType": "TEXT"
-                })
-
-        if '_price' not in [f['fieldName'] for f in custom_fields]:
-            price = request.form.get('price', '')
-            if price:
-                product_data.append({
-                    "fieldName": "_price",
-                    "label": "Sale Price",
-                    "value": f"${price}",
-                    "editable": "true",
-                    "fieldType": "TEXT"
-                })
-
         # Save to database
         ProductModel.save(product_id, tenant_id, product_data, image_data, image_mime_type)
 
@@ -234,25 +211,6 @@ def edit_product(tenant_id, product_id):
                 existing_field["value"] = value
 
             updated_product.append(existing_field)
-
-        # Handle backward compatibility fields
-        if '_name' not in [f['fieldName'] for f in custom_fields]:
-            name = request.form.get('name', '')
-            if name:
-                for field in products[product_id]:
-                    if field["fieldName"] == "_name":
-                        field["value"] = name
-                        updated_product.append(field)
-                        break
-
-        if '_price' not in [f['fieldName'] for f in custom_fields]:
-            price = request.form.get('price', '')
-            if price:
-                for field in products[product_id]:
-                    if field["fieldName"] == "_price":
-                        field["value"] = f"${price}"
-                        updated_product.append(field)
-                        break
 
         # Save to database
         ProductModel.save(product_id, tenant_id, updated_product, image_data, image_mime_type)

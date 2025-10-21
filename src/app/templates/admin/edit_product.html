@@ -60,35 +60,7 @@
                         </div>
                         {% endif %}
                     {% endfor %}
-                    
-                    <!-- Fallback fields for backward compatibility -->
-                    {% if not custom_fields|selectattr('fieldName', 'equalto', '_name')|list %}
-                        {% for field in product %}
-                            {% if field.fieldName == '_name' %}
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Product Name</label>
-                                <input type="text" class="form-control" id="name" name="name" value="{{ field.value }}">
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                    
-                    {% if not custom_fields|selectattr('fieldName', 'equalto', '_price')|list %}
-                        {% for field in product %}
-                            {% if field.fieldName == '_price' %}
-                            <div class="mb-3">
-                                <label for="price" class="form-label">Price</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    {% set price_value = field.value|replace('$', '') %}
-                                    <input type="text" class="form-control" id="price" name="price" 
-                                           pattern="[0-9]+(\.[0-9]{1,2})?" value="{{ price_value }}" placeholder="49.99">
-                                </div>
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="/{{ tenant_id }}/" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">Update Product</button>
