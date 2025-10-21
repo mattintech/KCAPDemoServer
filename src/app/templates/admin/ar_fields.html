@@ -111,6 +111,20 @@
 </div>
 
 <script>
+// Trim whitespace from field name and label on form submission
+document.getElementById('fieldForm').addEventListener('submit', function(e) {
+    var fieldNameInput = document.getElementById('fieldName');
+    var labelInput = document.getElementById('label');
+
+    // Trim whitespace from inputs before submission
+    if (fieldNameInput && !fieldNameInput.disabled) {
+        fieldNameInput.value = fieldNameInput.value.trim();
+    }
+    if (labelInput) {
+        labelInput.value = labelInput.value.trim();
+    }
+});
+
 function editField(button) {
     // Get data from button attributes
     var fieldData = {
@@ -121,7 +135,7 @@ function editField(button) {
         editable: button.getAttribute('data-editable'),
         displayOrder: button.getAttribute('data-displayorder')
     };
-    
+
     // Populate form
     document.getElementById('formAction').value = 'update';
     document.getElementById('fieldId').value = fieldData.id;
@@ -130,20 +144,20 @@ function editField(button) {
     document.getElementById('fieldType').value = fieldData.fieldType;
     document.getElementById('editable').value = fieldData.editable;
     document.getElementById('displayOrder').value = fieldData.displayOrder;
-    
+
     // Disable field name when editing and show warning
     document.getElementById('fieldName').disabled = true;
     document.getElementById('fieldNameWarning').style.display = 'block';
-    
+
     // Update form heading
     var formCard = document.querySelector('.card:last-child .card-header h5');
     if (formCard) {
         formCard.textContent = 'Edit AR Field';
     }
-    
+
     // Change button text
     document.querySelector('button[type="submit"]').textContent = 'Update Field';
-    
+
     // Scroll to form
     document.getElementById('fieldForm').scrollIntoView({ behavior: 'smooth' });
 }
@@ -152,17 +166,17 @@ function resetForm() {
     document.getElementById('formAction').value = 'add';
     document.getElementById('fieldId').value = '';
     document.getElementById('fieldForm').reset();
-    
+
     // Enable field name and hide warning
     document.getElementById('fieldName').disabled = false;
     document.getElementById('fieldNameWarning').style.display = 'none';
-    
+
     // Reset form heading
     var formCard = document.querySelector('.card:last-child .card-header h5');
     if (formCard) {
         formCard.textContent = 'Add/Edit AR Field';
     }
-    
+
     // Reset button text
     document.querySelector('button[type="submit"]').textContent = 'Save Field';
 }
