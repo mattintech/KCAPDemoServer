@@ -13,8 +13,19 @@ def index(tenant_id):
     if tenant is None:
         return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
 
-    products = ProductModel.get_all(tenant_id)
+    # Check if we should create default fields for a new tenant
+    create_defaults = request.args.get('create_defaults', '0') == '1'
     custom_fields = ARFieldModel.get_all(tenant_id)
+
+    # If no custom fields exist and user requested defaults, create them
+    if create_defaults and not custom_fields:
+        ARFieldModel.create_default_fields(tenant_id)
+        custom_fields = ARFieldModel.get_all(tenant_id)
+        flash('Tenant created with default product fields!', 'success')
+        # Redirect to remove the query parameter
+        return redirect(f'/{tenant_id}/')
+
+    products = ProductModel.get_all(tenant_id)
 
     return render_template('index.html', tenant=tenant, products=products, custom_fields=custom_fields)
 
