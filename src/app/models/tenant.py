@@ -37,7 +37,7 @@ class TenantModel:
             try:
                 cursor.execute(
                     'INSERT INTO tenants (id, name, username, password) VALUES (?, ?, ?, ?)',
-                    (tenant_id, name, 'admin', 'password')
+                    (tenant_id, name, 'admin', 'admin')
                 )
                 conn.commit()
                 return TenantModel.get_by_id(tenant_id)
