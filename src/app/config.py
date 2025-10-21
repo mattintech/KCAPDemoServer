@@ -28,6 +28,10 @@ class Config:
     SESSION_USE_SIGNER = True
     SESSION_FILE_DIR = os.path.join(DATA_FOLDER, 'flask_session')
 
+    # Authentication Mode
+    # Options: 'entra' (Entra ID/Azure AD) or 'none' (no authentication)
+    AUTH_MODE = os.environ.get('AUTH_MODE', 'entra').lower()
+
     # Entra ID (Azure AD) Configuration
     AZURE_CLIENT_ID = os.environ.get('AZURE_CLIENT_ID')
     AZURE_CLIENT_SECRET = os.environ.get('AZURE_CLIENT_SECRET')

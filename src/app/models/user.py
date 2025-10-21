@@ -67,8 +67,22 @@ class UserModel:
             return None
 
     @staticmethod
-    def get_by_id(user_id: int) -> Optional[Dict]:
-        """Get user by ID"""
+    def get_by_id(user_id) -> Optional[Dict]:
+        """Get user by ID (supports both integer IDs and string test IDs for no-auth mode)"""
+        # Handle test user IDs for no-auth mode
+        if isinstance(user_id, str) and user_id.startswith('test-'):
+            # Mock test user
+            role = 'admin' if 'admin' in user_id else 'user'
+            return {
+                'id': user_id,
+                'email': f'{role}@test.local',
+                'azure_oid': None,
+                'name': f'Test {role.capitalize()}',
+                'role': role,
+                'created_at': None,
+                'updated_at': None
+            }
+
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -211,12 +225,16 @@ class UserModel:
             return [row[0] for row in cursor.fetchall()]
 
     @staticmethod
-    def has_access_to_tenant(user_id: int, tenant_id: str) -> bool:
+    def has_access_to_tenant(user_id, tenant_id: str) -> bool:
         """Check if user has access to a specific tenant"""
         # Admin has access to everything
         user = UserModel.get_by_id(user_id)
         if user and user['role'] == UserModel.ROLE_ADMIN:
             return True
+
+        # Test users in no-auth mode don't have tenant associations
+        if isinstance(user_id, str) and user_id.startswith('test-'):
+            return False
 
         # Check if user owns the tenant
         with get_db() as conn:
@@ -228,7 +246,7 @@ class UserModel:
             return cursor.fetchone() is not None
 
     @staticmethod
-    def is_admin(user_id: int) -> bool:
+    def is_admin(user_id) -> bool:
         """Check if user has admin role"""
         user = UserModel.get_by_id(user_id)
         return user and user['role'] == UserModel.ROLE_ADMIN
