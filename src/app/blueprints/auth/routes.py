@@ -1,6 +1,6 @@
 """Authentication routes for Entra ID login/logout and no-auth mode"""
 import secrets
-from flask import session, redirect, url_for, request, current_app, render_template, flash
+from flask import session, redirect, url_for, request, current_app, render_template, flash, abort
 from . import auth_bp
 from app.models.user import UserModel
 
@@ -34,8 +34,8 @@ def select_role():
     """Role selection page for no-auth mode"""
     # Only available in no-auth mode
     if current_app.config.get('AUTH_MODE') != 'none':
-        flash('Role selection is only available in no-auth mode', 'error')
-        return redirect(url_for('auth.login'))
+        current_app.logger.warning(f"Attempted to access role selection in {current_app.config.get('AUTH_MODE')} mode")
+        abort(403, description="Role selection is only available in no-auth mode")
 
     if request.method == 'POST':
         role = request.form.get('role', 'user')
