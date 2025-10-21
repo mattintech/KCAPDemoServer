@@ -156,9 +156,14 @@
                 <div class="modal-body">
                     <form id="newTenantForm">
                         <div class="mb-3">
+                            <label for="tenantName" class="form-label">Tenant Display Name</label>
+                            <input type="text" class="form-control" id="tenantName" placeholder="e.g., Demo Company" required>
+                            <small class="form-text text-muted">This is how the tenant name will be displayed</small>
+                        </div>
+                        <div class="mb-3">
                             <label for="tenantId" class="form-label">Tenant ID</label>
                             <input type="text" class="form-control" id="tenantId" placeholder="e.g., demo-company" required pattern="[a-zA-Z0-9_-]+">
-                            <small class="form-text text-muted">Only letters, numbers, hyphens, and underscores allowed</small>
+                            <small class="form-text text-muted">Only letters, numbers, hyphens, and underscores allowed. Will be converted to lowercase.</small>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
@@ -246,17 +251,22 @@
         document.getElementById('newTenantForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const tenantId = document.getElementById('tenantId').value;
+            const tenantName = document.getElementById('tenantName').value;
             const createDefaults = document.getElementById('createDefaultFields').checked;
 
-            if (tenantId) {
+            if (tenantId && tenantName) {
                 const normalizedId = tenantId.toLowerCase();
                 if (reservedIds.includes(normalizedId)) {
                     alert(`"${tenantId}" is a reserved name and cannot be used as a tenant ID.`);
                     return;
                 }
 
-                // Redirect with query parameter for default fields
-                const url = '/' + normalizedId + '/' + (createDefaults ? '?create_defaults=1' : '');
+                // Redirect with query parameters for default fields and tenant name
+                const params = new URLSearchParams();
+                if (createDefaults) params.append('create_defaults', '1');
+                params.append('tenant_name', tenantName);
+
+                const url = '/' + normalizedId + '/?' + params.toString();
                 window.location.href = url;
             }
         });

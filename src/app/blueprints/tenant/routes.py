@@ -9,7 +9,21 @@ import os
 @tenant_access_required
 def index(tenant_id):
     """Tenant home page - product listing"""
-    tenant = TenantModel.get_or_create(tenant_id)
+    # Get the tenant name from query parameter if provided (for new tenant creation)
+    tenant_name = request.args.get('tenant_name')
+
+    # Check if tenant exists first
+    existing_tenant = TenantModel.get_by_id(tenant_id)
+
+    if existing_tenant:
+        tenant = existing_tenant
+    elif tenant_name:
+        # Create new tenant with display name
+        tenant = TenantModel.create(tenant_id, tenant_name)
+    else:
+        # Create with default name (tenant_id)
+        tenant = TenantModel.create(tenant_id)
+
     if tenant is None:
         return jsonify({"error": f"'{tenant_id}' is a reserved name and cannot be used as a tenant ID"}), 404
 
