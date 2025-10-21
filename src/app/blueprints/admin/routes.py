@@ -3,6 +3,7 @@ from . import admin_bp
 from app.models import TenantModel, ProductModel, ARFieldModel, UserModel
 from app.services import ProductService
 from app.decorators.auth import tenant_access_required
+import time
 
 @admin_bp.route('/add', methods=['GET', 'POST'])
 @tenant_access_required
@@ -78,7 +79,9 @@ def add_product(tenant_id):
                         })
 
                         field_suffix = field_name[1:] if field_name.startswith('_') else field_name
-                        image_path = f"/images/{product_id}_{field_suffix}.{extension}"
+                        # Add timestamp for cache busting
+                        timestamp = int(time.time())
+                        image_path = f"/images/{product_id}_{field_suffix}.{extension}?v={timestamp}"
 
                         if field_name == '_image':
                             image_data = img_data
@@ -217,7 +220,9 @@ def edit_product(tenant_id, product_id):
                         })
 
                         field_suffix = field_name[1:] if field_name.startswith('_') else field_name
-                        existing_field["value"] = f"/images/{product_id}_{field_suffix}.{extension}"
+                        # Add timestamp for cache busting
+                        timestamp = int(time.time())
+                        existing_field["value"] = f"/images/{product_id}_{field_suffix}.{extension}?v={timestamp}"
 
                         if field_name == '_image':
                             image_data = img_data
