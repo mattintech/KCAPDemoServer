@@ -36,6 +36,70 @@ This project is a simple Flask API for demonstrating AR content retrieval for ba
 
 ## Setup
 
+### Option 1: Docker Hub (Recommended)
+
+Pull and run the pre-built image from Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull mattintech/kcapdemoserver:latest
+
+# Run the container
+docker run -p 5555:5000 \
+  -e SECRET_KEY=your-secret-key-here \
+  -e DATABASE_URL=sqlite:///data/kcap_demo.db \
+  -v $(pwd)/data:/app/data \
+  mattintech/kcapdemoserver:latest
+```
+
+Or use a specific version:
+
+```bash
+docker pull mattintech/kcapdemoserver:v1.0.0
+docker run -p 5555:5000 --env-file .env mattintech/kcapdemoserver:v1.0.0
+```
+
+### Option 2: Docker Compose
+
+1. **Clone the Repository:**
+
+```bash
+git clone https://github.com/mattintech/KCAPDemoServer.git
+cd KCAPDemoServer
+```
+
+2. **Configure Environment:**
+
+Copy `.env.example` to `.env` and update with your Azure AD credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your Azure AD configuration values.
+
+3. **Run with Docker Compose:**
+
+```bash
+docker-compose up -d
+```
+
+The application will be available at `http://localhost:5555`
+
+4. **View Logs:**
+
+```bash
+docker-compose logs -f
+```
+
+5. **Stop the Application:**
+
+```bash
+docker-compose down
+```
+
+### Option 3: Local Python Setup
+
 1. **Clone the Repository:**
 
 ```bash
@@ -49,23 +113,26 @@ cd <repository_folder>
 pip install -r requirements.txt
 ```
 
-3. **Run the Server:**
+3. **Configure Environment:**
+
+Copy `.env.example` to `.env` and update with your configuration.
+
+4. **Run the Server:**
 
 ```bash
-python app.py
+python src/run.py
 ```
 
-The application will automatically create the necessary directories and initialize the products.json file if it doesn't exist.
+The application will automatically create the necessary directories and initialize the database if it doesn't exist.
 
-4. **Access the Admin Interface:**
+### Accessing the Application
 
-Open your browser and navigate to:
+**Admin Interface:**
 ```
 http://localhost:5555/admin
 ```
 
-5. **Test the Endpoints:**
-
+**API Endpoints:**
 * Login: `GET http://localhost:5555/login`
 * Content Fields: `GET http://localhost:5555/arcontentfields`
 * AR Info (Example): `GET http://localhost:5555/arinfo?barcode=123456`
@@ -104,6 +171,18 @@ The following barcode types are available:
         ├── edit_product.html     # Edit product form
         └── generate_barcode.html # Barcode generation page
 ```
+
+## Docker Hub
+
+Pre-built Docker images are automatically published to Docker Hub on each release:
+
+**Repository**: [mattintech/kcapdemoserver](https://hub.docker.com/r/mattintech/kcapdemoserver)
+
+**Available Tags**:
+- `latest` - Most recent release
+- `v1.0.0`, `v1.0.1`, etc. - Specific version releases
+
+For maintainers: See [DOCKER_HUB_SETUP.md](DOCKER_HUB_SETUP.md) for information on configuring automated builds.
 
 ## Implementation Notes
 

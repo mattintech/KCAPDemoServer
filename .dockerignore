@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Environment files (will be mounted separately)
+.env
+
+# Documentation
+README.md
+
+# CI/CD
+.github/
+
+# Claude
+.claude/
+
+# Instance data (will be mounted as volume)
+src/app/instance/
+src/app/static/images/
+src/app/static/barcodes/
+
+# Test files
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
